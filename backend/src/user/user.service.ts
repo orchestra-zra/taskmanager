@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
-import { publicEncrypt, privateDecrypt } from 'crypto';
+import { publicEncrypt, privateDecrypt } from 'node:crypto';
 
 const publicKey = process.env.PUBLIC_KEY?.replace(/\\n/g, "\n");
 const privateKey = process.env.PRIVATE_KEY?.replace(/\\n/g, "\n");

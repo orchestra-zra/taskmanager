@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import ArchiveComponent, { IArchiveIn } from "../components/ArchiveComponent";
 import { fetchData } from "../common/fetchData";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useGetTaskHeader } from "../common/fetchTasks";
 import { Avatar } from "../components/mini/Avatar";
 import { t } from "i18next";
@@ -9,6 +9,7 @@ import ArchiveIcon from "../assets/icons/Archive";
 import WebApp from "@twa-dev/sdk";
 import { useEffect } from "react";
 import { Loader } from "../components/mini/Loader";
+import ErrorState from "../components/ErrorState";
 
 const getArchiveById = async (id: number) => {
   return await fetchData(`project/${id}/archive`, {});
@@ -22,15 +23,30 @@ const Archive = () => {
   }, []);
   const { id } = useParams();
 
-  const { data: project, isLoading, isFetching } = useGetTaskHeader(Number(id));
+  const {
+    data: project,
+    isLoading,
+    isFetching,
+    error: headerError,
+    refetch: refetchHeader,
+  } = useGetTaskHeader(Number(id));
 
-  const { data: archiveById, isLoading: isLoadingArchive } = useQuery(
-    ["archiveTasks", id],
-    () => getArchiveById(Number(id)),
-  );
+  const {
+    data: archiveById,
+    isLoading: isLoadingArchive,
+    error: archiveError,
+    refetch: refetchArchive,
+  } = useQuery({
+    queryKey: ["archiveTasks", id],
+    queryFn: () => getArchiveById(Number(id)),
+  });
 
   if (isLoading) {
     return <Loader />;
+  }
+
+  if (headerError || !project) {
+    return <ErrorState onRetry={() => refetchHeader()} />;
   }
 
   return (
@@ -41,7 +57,7 @@ const Archive = () => {
           <Avatar
             image={""}
             alt={
-              project.mono_topic ? project.group.name : project.name
+              project.mono_topic ? project.group?.name : project.name
             }
             id={project.mono_topic ? project.group_id : Number(id)}
             avatarClass='w-9 h-9 rounded-[10px]'
@@ -56,6 +72,10 @@ const Archive = () => {
         {(() => {
           if (isLoadingArchive || isFetching) {
             return <Loader />;
+          }
+
+          if (archiveError || !archiveById) {
+            return <ErrorState onRetry={() => refetchArchive()} />;
           }
 
           if (archiveById.length > 0) {

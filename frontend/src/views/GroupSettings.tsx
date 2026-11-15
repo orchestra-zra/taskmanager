@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import axiosClient from "../common/axiosClient";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Loader } from "../components/mini/Loader";
 import { useEffect, useMemo, useState } from "react";
 import capitalizeFirstLetter from "../common/capitalizeFirstLetter";
@@ -15,6 +15,7 @@ import {
 import { UserInterface } from "../data/hooks/users/interface";
 import clsx from "clsx";
 import { useUserContext } from "../context/UserContext";
+import { toast } from "react-toastify";
 import sendImage from '../assets/icons/paperplane.circle.fill.png'
 
 const getProject = async (id: number) => {
@@ -54,7 +55,10 @@ const GroupSettings = () => {
     data: project,
     isLoading,
     error,
-  } = useQuery(["groupProjectData", id], () => getProject(Number(id)));
+  } = useQuery({
+    queryKey: ["groupProjectData", id],
+    queryFn: () => getProject(Number(id)),
+  });
 
   const { mutate: notificationMutate } = useChangeNotificationAll();
   const { mutate: notificationStatusMutate } = useChangeNotificationStatusAll();
@@ -119,9 +123,13 @@ const GroupSettings = () => {
     <div className='p-3'>
       <div>
         {
-          (usersList.length && usersList.find((u: any) => u.telegram_id === String(user.telegram_id) && u.role === 'admin')) ? 
+          (usersList.length && usersList.find((u: { telegram_id: string; role: string }) => u.telegram_id === String(user.telegram_id) && u.role === 'admin')) ?
           <div
-            onClick={() => send_weekly_status_maual(Number(id))}
+            onClick={() =>
+              send_weekly_status_maual(Number(id))
+                .then(() => toast.success(t("weekly_status_sent")))
+                .catch(() => toast.error(t("error_generic")))
+            }
             className='h-[50px] flex items-center justify-center mt-4 mb-[42px] gap-2 rounded-xl bg-white  text-customBlue text-[14px] font-medium font-sfpro'
           >
             <span>{t("send_weekly_analytics")}</span>
@@ -411,7 +419,7 @@ const GroupSettings = () => {
         {isLoading && <Loader />}
       </div>
         {
-          (usersList.length && usersList.find((u: any) => u.telegram_id === String(user.telegram_id) && u.role === 'admin')) ? 
+          (usersList.length && usersList.find((u: { telegram_id: string; role: string }) => u.telegram_id === String(user.telegram_id) && u.role === 'admin')) ?
         <div
           onClick={() => setIsOpenDelete(true)}
           className='h-[50px] flex items-center justify-center mt-4 mb-[42px] rounded-xl bg-gray-300 text-customRed text-[17px] font-medium font-sfpro'
@@ -442,7 +450,7 @@ const GroupSettings = () => {
         <div className='w-full h-[56px] py-[6px] px-[18px] bg-[#F2F2F7] rounded-custom-16'>
           <input
             type='text'
-            placeholder='Type to here'
+            placeholder={t("type_here")}
             className='w-full h-full bg-transparent outline-none border-none'
             value={confirmationInput}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -468,7 +476,7 @@ const GroupSettings = () => {
                 {t("cancel")}
               </div>
 
-              {confirmationInput === "Sure" ? (
+              {confirmationInput === t("delete_confirmation_word") ? (
                 <div
                   className='w-[50%] h-[44px] bottom-[22px] bg-[#f2f2f7] text-[#FF3B30] flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 cursor-pointer font-sfpro text-[14px] font-medium'
                   onClick={() => {

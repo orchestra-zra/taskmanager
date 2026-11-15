@@ -13,7 +13,7 @@ export class AuthGuard implements CanActivate {
     const [authType, authData = ''] = authHeader.split(' ');
 
     const isTestModeEnabled =
-      process.env.NODE_ENV !== 'production' ||
+      process.env.NODE_ENV !== 'production' &&
       process.env.ENABLE_TEST_MODE === 'true';
 
     if(authData === 'TEST_MODE' && isTestModeEnabled)

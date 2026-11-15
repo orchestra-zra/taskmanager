@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { CatchErrorDecorator } from 'src/decorators/catch.error.decorator';
 import { PrismaService } from 'src/prisma.service';
 import { StatusService } from 'src/status/status.service';
@@ -315,7 +315,7 @@ export class ProjectService {
         }
     }
 
-    async deleteFunc(id: number)
+    async deleteFunc(id: number, user_id: number)
     {
             const check = await this.prisma.project.findUnique({
                 where: {
@@ -335,6 +335,29 @@ export class ProjectService {
                 }
             });
             if(!check) throw new NotFoundException("Project not found");
+
+            // Authorization: user must be a member of the project's group
+            const groupMember = await this.prisma.groupUser.findFirst({
+                where: {
+                    group_id: check.group_id,
+                    user_id: String(user_id)
+                }
+            });
+
+            if(!groupMember) throw new HttpException("Permission denied", 403);
+
+            // Authorization: user must have the project "admin" role
+            const projectUser = await this.prisma.projectUser.findFirst({
+                where: {
+                    project_id: check.id,
+                    user_id: String(user_id)
+                },
+                include: {
+                    role: true
+                }
+            });
+
+            if(!projectUser || projectUser.role.name !== "admin") throw new HttpException("Permission denied", 403);
 
             if (check.tasks.length > 0) {
                 for (const task of check.tasks) {

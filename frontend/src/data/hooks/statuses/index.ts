@@ -1,7 +1,7 @@
-import { useQuery, UseQueryOptions } from 'react-query';
+import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { Params } from '../../../components/ProjectCarusel';
 import { fetchData } from '../../../common/fetchData';
-import { IStatus } from '../../../components/ProjectCarusel'; 
+import { IStatus } from '../../../components/ProjectCarusel';
 
 const useGetStatuses = (
   id: number,
@@ -17,7 +17,9 @@ const useGetStatuses = (
     return response;
   };
 
-  return useQuery(['statuses', id, selectedUsers] as [string, number, string], getStatuses, {
+  return useQuery({
+    queryKey: ['statuses', id, selectedUsers] as [string, number, string],
+    queryFn: getStatuses,
     enabled: true,
     ...options,
   });

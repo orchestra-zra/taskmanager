@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useGetTaskHeader } from "../../common/fetchTasks";
 import { Loader } from "../../components/mini/Loader";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import WebApp from "@twa-dev/sdk";
 import { t } from "i18next";
 import Participant from "./Participant";
@@ -31,6 +31,7 @@ const CreateTaskFromGroup = () => {
   }, []);
   const createTaskMutate = useCreateTask();
   const { project_id } = useParams();
+  const navigate = useNavigate();
 
   const {
     handleSubmit,
@@ -41,6 +42,7 @@ const CreateTaskFromGroup = () => {
   });
 
   const onSubmit = async (data: FormValues) => {
+    if (createTaskMutate.isPending) return;
     const taskData = {
       project_id: Number(project_id),
       name: data.name,
@@ -71,7 +73,15 @@ const CreateTaskFromGroup = () => {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="fixed top-0 left-0 right-0 flex justify-between h-[56px] items-center bg-[#f2f2f7] p-3">
-        <div className="text-gray-500 h-full w-[60px] flex items-center"></div>
+        <div className="text-gray-500 h-full w-[60px] flex items-center">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="text-[15px] font-sfpro text-customBlack font-medium"
+          >
+            {t("cancel")}
+          </button>
+        </div>
         <div>{t("new_task")}</div>
         <div className="text-gray-500 h-full w-[60px] flex items-center justify-end"></div>
       </div>
@@ -126,7 +136,7 @@ const CreateTaskFromGroup = () => {
           <Controller
             control={control}
             name="participants"
-            rules={{ required: "Participat is required" }}
+            rules={{ required: "Participants is required" }}
             render={({ field }) => {
               return (
                 <>
@@ -187,9 +197,9 @@ const CreateTaskFromGroup = () => {
         </div>
         <button
           type="submit"
-          disabled={!!errors.name}
+          disabled={!!errors.name || createTaskMutate.isPending}
           className={`fixed bottom-[42px] w-[95%] max-w-[680px] left-1/2 -translate-x-1/2 py-4 rounded-xl flex justify-center items-center ${
-            errors.name
+            errors.name || createTaskMutate.isPending
               ? "bg-gray-300 text-gray-400"
               : "bg-custom-gradient-blue text-white"
           }`}

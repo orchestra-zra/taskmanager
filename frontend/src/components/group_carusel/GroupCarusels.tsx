@@ -1,4 +1,4 @@
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { fetchData } from "../../common/fetchData";
 import { Link } from "react-router-dom";
 import projectplus from "../../assets/images/projectplus.svg";
@@ -21,7 +21,10 @@ export interface IGroup {
 
 
 const BigProjects = () => {
-  const { data, error, isLoading } = useQuery(["groupSelect"], () => getGroups());  
+  const { data, error, isLoading } = useQuery({
+    queryKey: ["groupSelect"],
+    queryFn: () => getGroups(),
+  });
 
   if (isLoading) return <Loader customClass="h-[170px]" />;
   if (error instanceof Error) {

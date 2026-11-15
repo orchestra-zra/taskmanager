@@ -20,12 +20,14 @@ export const AvatarUser = (props: {
   const avatarSize = props.width ? props.width : 24;
 
   
-  const getPhoto = async () => {
-    const result = await imageCacheChacker(`${props.id}`);
-    setImg(result)
-  };
-
   useEffect(() => {
+    // Defined inside the effect: the fetch is keyed only on props.id. If
+    // getPhoto stayed outside and were added to deps, its identity would
+    // change every render and refetch on every parent re-render.
+    const getPhoto = async () => {
+      const result = await imageCacheChacker(`${props.id}`);
+      setImg(result)
+    };
     getPhoto();
   }, [props.id]);
 

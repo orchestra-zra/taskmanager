@@ -1,16 +1,16 @@
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { eventsApi } from "../../api/events";
 
 export const useGetEventsNew = () => {
   return useQuery({
-    queryKey: ["eventsNewData"],
+    queryKey: ["events", "new"],
     queryFn: eventsApi.getEvntsNew
   });
 };
 
 export const useGetEvents = () => {
   return useQuery({
-    queryKey: ["eventsNewData"],
+    queryKey: ["events", "viewed"],
     queryFn: eventsApi.getEvents
   });
 };

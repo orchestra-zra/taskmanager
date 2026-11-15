@@ -245,6 +245,9 @@ export class TaskService {
     {
         const taskId = Number(id);
         let statusID = Number(status_id);
+
+        await this.assertTaskAccess(user_id, taskId);
+
         try {
             const task = await this.prisma.task.findUnique({
                 where: {
@@ -313,6 +316,8 @@ export class TaskService {
 
     async updatePriority(user_id: number, priority_id: number, id: number)
     {
+        await this.assertTaskAccess(user_id, Number(id));
+
         try {
             const task = await this.prisma.task.findUnique({
                 where: {
@@ -457,16 +462,31 @@ export class TaskService {
         }
     }
 
-    async delete(user_id: number, id: number)
+    private async assertTaskAccess(user_id: number, task_id: number)
     {
-        const taskId = Number(id);
-        const task = await this.prisma.task.findUnique({
+        const task: any = await this.prisma.task.findUnique({
             where: {
-                id: taskId
+                id: Number(task_id)
+            },
+            include: {
+                project: {
+                    select: {
+                        group_id: true
+                    }
+                }
             }
         });
 
         if(!task) throw new NotFoundException("Task not found");
+
+        if(!(await this.userService.isGroupUser(task.project.group_id, String(user_id)))) throw new HttpException("Permission denied", 403);
+    }
+
+    async delete(user_id: number, id: number)
+    {
+        const taskId = Number(id);
+
+        await this.assertTaskAccess(user_id, taskId);
 
         try {
             await this.prisma.$transaction([
@@ -507,23 +527,15 @@ export class TaskService {
             return "Deleted successfully";
         } catch (error) {
             console.log("Delete task error: " + error);
-            return "Not deleted"
+            throw new HttpException("Failed to delete task", 500);
         }
     }
 
     async archive(user_id: number, id: number, archive: boolean)
     {
-        try {
-            const task = await this.prisma.task.findUnique({
-                where: {
-                    id: Number(id)
-                },
-                include: {
-                    project: true
-                }
-            });
-            if(!task) throw new NotFoundException("Task not found");
+        await this.assertTaskAccess(user_id, Number(id));
 
+        try {
             let new_value: string = "Task was archived";
             let type: string = "archive";
 
@@ -566,23 +578,15 @@ export class TaskService {
             return "Successfully changed";
         } catch (error) {
             console.log("Archive error: " + error);
+            throw new HttpException("Failed to archive task", 500);
         }
     }
 
     async comment(user_id: number, id: number, text: string)
     {
-        try {
-            const task = await this.prisma.task.findUnique({
-                where: {
-                    id: Number(id)
-                },
-                include: {
-                    status: true,
-                    project: true,
-                }
-            });
-            if(!task) throw new NotFoundException("Task not found");
+        await this.assertTaskAccess(user_id, Number(id));
 
+        try {
             if(text === "") throw new BadRequestException("Not found text");
 
             const comment = this.prisma.taskComment.create({
@@ -618,16 +622,7 @@ export class TaskService {
 
     async participant(id: number, participant: number[], telegram_id: number)
     {
-        const task = await this.prisma.task.findUnique({
-            where: {
-                id: Number(id)
-            },
-            include: {
-                taskUser: true
-            }
-        });
-
-        if(!task) throw new NotFoundException("Task not found");
+        await this.assertTaskAccess(telegram_id, Number(id));
 
         try {
             if(participant.length > 0)
@@ -739,6 +734,9 @@ export class TaskService {
     {
         const {id, name, description, telegram_id} = params;
         const id_number = Number(id);
+
+        await this.assertTaskAccess(telegram_id, id_number);
+
         const checkUser = await this.prisma.user.findFirst({
             where: { telegram_id: String(telegram_id) },
             include: {

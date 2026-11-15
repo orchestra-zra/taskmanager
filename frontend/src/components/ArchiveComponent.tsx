@@ -94,7 +94,7 @@ const ArchiveComponent = (props: IArchive) => {
             }}
           >
             <p className='text-gradient-blue text-sm font-sfpro font-medium'>
-              Развархивировать
+              {t("unarchive")}
             </p>
           </div>
           <div
@@ -105,7 +105,7 @@ const ArchiveComponent = (props: IArchive) => {
             }}
           >
             <p className='text-[#FF3B30] text-sm font-sfpro font-medium'>
-              Удалить задачу
+              {t("delete_task")}
             </p>
           </div>
         </div>
@@ -130,14 +130,14 @@ const ArchiveComponent = (props: IArchive) => {
           {isOpenArchive && (
             <div className='flex gap-2'>
               <div className='w-[50%] h-[44px] bottom-[22px] bg-[#f2f2f7] text-[#1e1e1e] flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 cursor-pointer font-sfpro text-[14px] font-medium' onClick={() => setIsOpenArchive(false)}>
-                <p>{t("Отмена")}</p>
+                <p>{t("cancel")}</p>
               </div>
 
               <div className='w-[50%] h-[44px] bottom-[22px] bg-custom-gradient-blue text-white flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 cursor-pointer font-sfpro text-[14px] font-medium' onClick={() => {
                 archiveTask()
                 setIsOpenArchive(false);
               }}>
-                <p>{t("Подтвердить")}</p>
+                <p>{t("confirm")}</p>
               </div>
             </div>
           )}
@@ -166,7 +166,7 @@ const ArchiveComponent = (props: IArchive) => {
         <div className='w-full h-[56px] py-[6px] px-[18px] bg-[#F2F2F7] rounded-custom-16'>
           <input
             type='text'
-            placeholder='Type to here'
+            placeholder={t("type_here")}
             className='w-full h-full bg-transparent outline-none border-none'
             value={confirmationInput}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -191,7 +191,7 @@ const ArchiveComponent = (props: IArchive) => {
                 {t("cancel")}
               </div>
 
-              {confirmationInput === "Sure" ? (
+              {confirmationInput === t("delete_confirmation_word") ? (
                 <div
                   className='w-[50%] h-[44px] bottom-[22px] bg-[#f2f2f7] text-[#FF3B30] flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 cursor-pointer font-sfpro text-[14px] font-medium'
                   onClick={() => {

@@ -148,11 +148,13 @@ export const ProjectCarusel = () => {
     }
   }, [project]);
 
-  const { data: statuses } = useGetStatuses(Number(id), state.selectedUsers, {
-    onSuccess: (data: IStatus[] | undefined) => {
-      setState({ statuses: data });
-    },
-  });
+  const { data: statuses } = useGetStatuses(Number(id), state.selectedUsers);
+
+  useEffect(() => {
+    if (statuses) {
+      setState({ statuses });
+    }
+  }, [statuses]);
 
   const getStatuses = async (): Promise<void> => {
     setState({ statuses: statuses });

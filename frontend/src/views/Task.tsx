@@ -4,7 +4,7 @@ import { useCallback, useEffect, useReducer } from "react";
 import { dateTimeConverter } from "../common/dateTimeConverter";
 import { AvatarUser } from "../components/mini/AvatarUser";
 import { Link, useParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchData } from "../common/fetchData";
 import { Loader } from "../components/mini/Loader";
 import { IoTrash } from "react-icons/io5";
@@ -39,21 +39,14 @@ import CalendarIcon from "../assets/icons/CalendarIcon";
 import WebApp from "@twa-dev/sdk";
 import { UserInterface } from "../data/hooks/users/interface";
 import { IUserFromGroup } from "../components/TopProjectBar";
+import ErrorState from "../components/ErrorState";
 
 const getTask = async (id: number) => {
-  try {
-    return await fetchData("/task/show/" + id, {});
-  } catch (error) {
-    console.log("Get task error: " + error);
-  }
+  return await fetchData("/task/show/" + id, {});
 };
 
 const getStatuses = async (id: number) => {
-  try {
-    return await fetchData("/status/" + id, {});
-  } catch (error) {
-    console.log("getStatuses error: " + error);
-  }
+  return await fetchData("/status/" + id, {});
 };
 
 interface State {
@@ -139,17 +132,19 @@ const Task = () => {
     data: task,
     error,
     isLoading,
-  } = useQuery(["taskData", id], () => getTask(Number(id)));
+    refetch,
+  } = useQuery({
+    queryKey: ["taskData", id],
+    queryFn: () => getTask(Number(id)),
+  });
 
   const deleteTaskMutation = useDeleteTask(Number(task?.project_id));
 
-  const { data: statuses } = useQuery(
-    ["statusData", { project_id: task?.project_id }],
-    () => getStatuses(Number(task?.project_id)),
-    {
-      enabled: Boolean(task?.project_id),
-    },
-  );
+  const { data: statuses } = useQuery({
+    queryKey: ["statusData", { project_id: task?.project_id }],
+    queryFn: () => getStatuses(Number(task?.project_id)),
+    enabled: Boolean(task?.project_id),
+  });
 
   const getUsers = useCallback(async () => {
     if (!task) return;
@@ -182,7 +177,7 @@ const Task = () => {
     };
 
     setState(data);
-  }, [task]);
+  }, [task, user]);
 
   useEffect(() => {
     if (task) getUsers();
@@ -203,12 +198,14 @@ const Task = () => {
   };
 
   const deleteTask = async () => {
+    if (deleteTaskMutation.isPending) return;
     deleteTaskMutation.mutate(Number(id));
   };
 
   const archiveTaskMutation = useArchiveTask();
 
   const archiveTask = () => {
+    if (archiveTaskMutation.isPending) return;
     const isArchived = !task.is_archive;
     archiveTaskMutation.mutate({
       isArchived: isArchived,
@@ -228,8 +225,8 @@ const Task = () => {
   };
 
   if (isLoading) return <Loader customClass="h-[100vh]" />;
-  if (error instanceof Error) {
-    return <div>An error occurred: {error.message}</div>;
+  if (error) {
+    return <ErrorState onRetry={() => refetch()} />;
   }
 
   const capitalizeFirstChar = (str: string) => {
@@ -244,7 +241,7 @@ const Task = () => {
     Completed: "completed",
   };
 
-  if (!task) return null;
+  if (!task) return <ErrorState onRetry={() => refetch()} />;
 
   return (
     <>
@@ -746,7 +743,7 @@ const Task = () => {
         <div className="w-full h-[56px] py-[6px] px-[18px] bg-[#F2F2F7] rounded-custom-16">
           <input
             type="text"
-            placeholder="Type to here"
+            placeholder={t("type_here")}
             className="w-full h-full bg-transparent outline-none border-none"
             value={state.confirmationInput}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -774,7 +771,8 @@ const Task = () => {
                 {t("cancel")}
               </div>
 
-              {state.confirmationInput === "Sure" ? (
+              {state.confirmationInput === t("delete_confirmation_word") &&
+              !deleteTaskMutation.isPending ? (
                 <div
                   className="w-[50%] h-[44px] bottom-[22px] bg-[#f2f2f7] text-[#FF3B30] flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 cursor-pointer font-sfpro text-[14px] font-medium"
                   onClick={() => {
@@ -821,11 +819,14 @@ const Task = () => {
                   setState({ isOpenArchive: false });
                 }}
               >
-                <p>{t("cencel")}</p>
+                <p>{t("cancel")}</p>
               </div>
 
               <div
-                className="w-[50%] h-[44px] bottom-[22px] bg-custom-gradient-blue text-white flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 cursor-pointer font-sfpro text-[14px] font-medium"
+                className={clsx(
+                  "w-[50%] h-[44px] bottom-[22px] bg-custom-gradient-blue text-white flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 cursor-pointer font-sfpro text-[14px] font-medium",
+                  archiveTaskMutation.isPending && "opacity-50 pointer-events-none",
+                )}
                 onClick={() => {
                   archiveTask(), setState({ isOpenArchive: false });
                 }}

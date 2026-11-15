@@ -151,5 +151,18 @@
     "archive_empty": "Project archive is empty",
     "task_empty": "No tasks yet",
     "show_comment_text": "Comments left in the application will be displayed in the chat.",
-    "send_weekly_analytics": "Get Manit App analytics for the week in the bot"
+    "send_weekly_analytics": "Get Manit App analytics for the week in the bot",
+    "error_generic": "Something went wrong",
+    "error_retry": "Retry",
+    "delete_confirmation_word": "Sure",
+    "type_here": "Type here",
+    "error_create_task": "Failed to create task",
+    "error_update_status": "Failed to update status",
+    "error_update_priority": "Failed to update priority",
+    "error_update_participants": "Failed to update participants",
+    "error_delete_task": "Failed to delete task",
+    "error_archive_task": "Failed to archive task",
+    "error_comment": "Failed to send comment",
+    "error_save": "Failed to save",
+    "weekly_status_sent": "Weekly status request sent"
 }

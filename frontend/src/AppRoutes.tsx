@@ -17,12 +17,14 @@ import Profile from "./views/Profile";
 import Settings from "./views/Settings";
 import TimeZone from "./views/TimeZone";
 import { ToastContainer } from "react-toastify";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./index.css";
 
 const AppRoutes = () => {
   return (
     <div className="max-w-[700px] bg-[#F2F2F7] h-[100vh] mx-auto w-full relative select-none scrollbar-hidden">
       <ToastContainer stacked />
+      <ErrorBoundary>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/groups/:id" element={<Projects />} />
@@ -48,6 +50,7 @@ const AppRoutes = () => {
         <Route path="/timezone" element={<TimeZone />} />
         <Route path="*" element={<Home />} />
       </Routes>
+      </ErrorBoundary>
     </div>
   );
 };

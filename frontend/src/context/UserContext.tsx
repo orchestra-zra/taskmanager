@@ -37,7 +37,7 @@ const initialState: UserState = {
   isTelegramWebApp: true,
 };
 
-function UserProvider({ children }: PropsWithChildren<{}>) {
+function UserProvider({ children }: PropsWithChildren) {
   const navigate = useNavigate();
   const [state, setState] = useReducer(
     (state: UserState, setState: Partial<UserState>) => ({
@@ -47,7 +47,12 @@ function UserProvider({ children }: PropsWithChildren<{}>) {
   
   const initer = async () => {
     const isProdMode = testMode === 'false' ? true : false;
-    const userStateUpdate = (user: any) => {
+    const userStateUpdate = (user: {
+      id: number;
+      firstName: string;
+      username: string;
+      languageCode: string;
+    }) => {
       const userData = {
         telegram_id: user.id,
         first_name: user.firstName,
@@ -63,7 +68,7 @@ function UserProvider({ children }: PropsWithChildren<{}>) {
       setState({ isTelegramWebApp });
   
       if (dataUnsafe?.start_param) {
-        const [_, path, id] = dataUnsafe.start_param.match(/^(.*?)_(\d+)$/) || [];
+        const [, path, id] = dataUnsafe.start_param.match(/^(.*?)_(\d+)$/) || [];
         if (path && id) navigate(`/${path}/${id}`);
       }
   
@@ -92,6 +97,12 @@ function UserProvider({ children }: PropsWithChildren<{}>) {
 
   useEffect(() => {
     initer();
+    // Mount-only by design: this is the one-shot auth bootstrap (Telegram
+    // WebApp initData parse, start_param redirect, POST /auth). `initer` is
+    // recreated on every render (and closes over `navigate`, which changes on
+    // each navigation), so adding it to deps would re-run the whole login flow
+    // on every render/navigation instead of once per app lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!state.isTelegramWebApp && testMode === 'false') {
@@ -119,4 +130,8 @@ const useUserContext = (): UserContextType => {
   return context;
 };
 
+// UserContext and the useUserContext hook are intentionally co-located with
+// UserProvider (single small context module for this app); splitting them into
+// separate files would add indirection without benefit.
+// eslint-disable-next-line react-refresh/only-export-components
 export { UserProvider, UserContext, useUserContext };

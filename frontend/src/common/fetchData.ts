@@ -1,6 +1,11 @@
 import axiosClient from './axiosClient';
 
-export const fetchData = async (path: string, params: any) => {
+export interface IFetchParams {
+  status?: number | string | null;
+  user_ids?: string;
+}
+
+export const fetchData = async (path: string, params: IFetchParams) => {
   try {
     const response = await axiosClient.get(path, {
       params: params,

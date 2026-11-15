@@ -4,8 +4,9 @@ import { useParams } from "react-router-dom";
 import axiosClient from "../common/axiosClient";
 import Comment, { ICommentIn } from "./Comment";
 import { t } from "i18next";
-import { QueryClient } from "react-query";
+import { QueryClient } from "@tanstack/react-query";
 import { postEvent } from "@telegram-apps/sdk";
+import { toast } from "react-toastify";
 import BigCommentIcon from "../assets/icons/BigCommentIcon";
 import EventCard from "./EventCard";
 import { UserInterface } from "../data/hooks/users/interface";
@@ -51,6 +52,7 @@ const CommentAndEvent = (props: {
   };
 
   const createComment = async () => {
+    if (state.commentText.trim() === "") return;
     try {
       const response = await axiosClient.put(`/task/${id}/comment`, {
         text: state.commentText,
@@ -68,6 +70,7 @@ const CommentAndEvent = (props: {
       }
     } catch (error) {
       console.log("create comment: " + error);
+      toast.error(t("error_comment"), { position: "top-right", autoClose: 3000 });
     }
   };
 
@@ -93,7 +96,7 @@ const CommentAndEvent = (props: {
               onMouseLeave={() => setState({ ...state, commentInput: false })}
               className='outline-none bg-gray-100 px-3 py-2 text-sm rounded-lg'
             />
-            {state.commentText === "" ? (
+            {state.commentText.trim() === "" ? (
               <div className='h-[30px] w-[30px] bg-gray-100 text-gray-500 flex justify-center items-center rounded-full'>
                 <FaArrowRight />
               </div>

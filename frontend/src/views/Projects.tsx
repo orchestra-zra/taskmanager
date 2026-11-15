@@ -50,6 +50,11 @@ const Projects = () => {
     if (data && data.projects?.length === 1) {
       navigate("/projects/" + data.projects[0]?.id, { replace: true, });
     }
+    // `getData` is recreated every render; adding it to deps would refetch
+    // group users and call setGroups with a fresh array on every render,
+    // producing a render loop. The fetch is intentionally keyed to the `data`
+    // query result (it closes over the current `id`, stable for this route).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, navigate]);
 
   
