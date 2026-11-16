@@ -1,7 +1,7 @@
-import { Controller, Post, Res, UseGuards } from '@nestjs/common';
+import { Controller, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -13,7 +13,7 @@ export class AuthController {
     const initData = res.locals.initData;
     if (!initData) {
       console.log("Init data not found");
-      throw new Error('Init data not found');
+      throw new UnauthorizedException('Init data not found');
     }
     console.log({initData});
     return res.json(initData);

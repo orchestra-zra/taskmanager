@@ -10,7 +10,7 @@ import { CatchErrorDecorator } from 'src/decorators/catch.error.decorator';
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
-  @Get("notification_task_priotity")
+  @Get(["notification_task_priotity", "notification_task_priority"])
   @UseGuards(UserGuard)
   async notification_task_priotity()
   {
@@ -25,7 +25,7 @@ export class TaskController {
   }
 
 
-  @Get("send_weekly_status_maual/:project_id")
+  @Get(["send_weekly_status_maual/:project_id", "send_weekly_status_manual/:project_id"])
   @UseGuards(UserGuard)
   async send_weekly_status_maual(
     @Param("project_id") project_id: string
@@ -50,6 +50,7 @@ export class TaskController {
   }
 
   @Post('init')
+  @UseGuards(UserGuard)
   async init(
     @Body() data: {
       topic_id: string,

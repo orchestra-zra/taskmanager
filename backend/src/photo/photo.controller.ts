@@ -1,6 +1,5 @@
 import { Controller, Get, HttpException, HttpStatus, Param, Res } from '@nestjs/common';
 import { PhotoService } from './photo.service';
-import { Response } from 'express';
 import axios from 'axios';
 
 @Controller('photo')

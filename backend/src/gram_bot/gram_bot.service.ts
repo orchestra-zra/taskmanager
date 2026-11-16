@@ -16,14 +16,6 @@ import { PrismaService } from 'src/prisma.service';
 import { EventBuilder } from 'telegram/events/common';
 import { TagService } from 'src/tag/tag.service';
 
-interface InitTask {
-    topic: { title: string; id: number };
-    message_id: number;
-    user_id: number;
-    name: string;
-    project_id: number;
-}
-
 @Injectable()
 export class GramBotService implements OnModuleInit {
     private readonly apiId: number = parseInt(process.env.TELEGRAM_API_ID, 10);
@@ -126,16 +118,17 @@ export class GramBotService implements OnModuleInit {
 
     private async handleDoneReaction(event)
     {
-        if(event)
-        {
-            if(event.className === "UpdateBotMessageReaction" && event.newReactions.length &&  event.newReactions[0].emoticon === '👍'){
-                this.doneTask(event.msgId, Number(event.actor.userId), -1, true)
-            }else if(event.className === "UpdateChannelParticipant" && this.botId > 0 && Number(event.userId) === this.botId)
-            {
+        if (!event) return;
+        try {
+            if (event.className === "UpdateBotMessageReaction" && event.newReactions?.length && event.newReactions[0]?.emoticon === '👍' && event.actor?.userId) {
+                await this.doneTask(event.msgId, Number(event.actor.userId), -1, true);
+            } else if (event.className === "UpdateChannelParticipant" && this.botId > 0 && Number(event.userId) === this.botId) {
                 console.log("event");
                 console.log(event);
                 await this.addBotToChannel(Number(event.channelId));
             }
+        } catch (error) {
+            this.logger.error(`handleDoneReaction error: ${error.message}`);
         }
     }
 
@@ -145,54 +138,64 @@ export class GramBotService implements OnModuleInit {
         if (!message) return;
         const chatId = message?.peerId;
         const messageId = message.id;
-        const messageText: string = message.message;
+        const messageText: string = message.message || '';
+        const senderUserId = message.fromId?.userId;
         let topic: any;
         console.log(`Received message: ${messageText}`);
-        if (messageText !== "/start") 
+        if (messageText !== "/start" && chatId?.channelId) 
         {
-            const initGroup = await this.getChannel(message.peerId.channelId);
-            if(initGroup) topic = await this.getChannelTopics(message.peerId.channelId, messageId);
+            const initGroup = await this.getChannel(chatId.channelId);
+            if(initGroup) topic = await this.getChannelTopics(chatId.channelId, messageId);
         }
 
         switch (this.normalizeBotCommand(messageText))
         {
             case "Plan Jet 🚀":
-                await this.pinPermission(chatId.channelId, messageId)
+                if (chatId?.channelId) await this.pinPermission(chatId.channelId, messageId);
                 break;
             case "/start": 
-                await Promise.all([
-                    this.sendPermissionImage(message.peerId.userId)
-                ]);
+                {
+                    const targetUserId = chatId?.userId || senderUserId;
+                    if (targetUserId) {
+                        await Promise.all([
+                            this.sendPermissionImage(targetUserId)
+                        ]);
+                    }
+                }
                 break;
             case "/dashboard": 
-                await this.notificationService.addBotToChannel(chatId.channelId, 'dashboard', topic);
-                await this.removeMessage(chatId.channelId, messageId);
+                if (chatId?.channelId) {
+                    await this.notificationService.addBotToChannel(chatId.channelId, 'dashboard', topic);
+                    await this.removeMessage(chatId.channelId, messageId);
+                }
                 break;
             case "/commands": 
-                await this.notificationService.addBotToChannel(chatId.channelId, 'commands', topic);
-                await this.removeMessage(chatId.channelId, messageId);
+                if (chatId?.channelId) {
+                    await this.notificationService.addBotToChannel(chatId.channelId, 'commands', topic);
+                    await this.removeMessage(chatId.channelId, messageId);
+                }
                 break;
             
             case "/add":
-                if(message.replyTo && topic)
+                if(message.replyTo && topic && senderUserId)
                 {
-                    await this.createTask(chatId, message.replyTo.replyToMsgId, message.fromId.userId, topic, messageId);
+                    await this.createTask(chatId, message.replyTo.replyToMsgId, senderUserId, topic, messageId);
                 }else{
                     await this.sendMessage(chatId, "Task not found", messageId);
                 }
                 break;
             case "/done":
-                if (message.replyTo && topic) {
-                    await this.doneTask(message.replyTo.replyToMsgId, message.fromId.userId, messageId);
-                    await this.removeMessage(chatId.channelId, messageId);
+                if (message.replyTo && topic && senderUserId) {
+                    await this.doneTask(message.replyTo.replyToMsgId, senderUserId, messageId);
+                    if (chatId?.channelId) await this.removeMessage(chatId.channelId, messageId);
                 } else {
                     await this.sendMessage(chatId, "Task not found", messageId);
                 }
                 break;
 
             default:
-                if (message.replyTo) await this.commentCreate(message.replyTo.replyToMsgId, message.fromId.userId, messageId, messageText);
-                if((messageText.includes("#task") || messageText.includes("#backlog")) && topic) await this.createTask(chatId, messageId, message.fromId.userId, topic, 0);
+                if (message.replyTo && senderUserId && messageText) await this.commentCreate(message.replyTo.replyToMsgId, senderUserId, messageId, messageText);
+                if((messageText.includes("#task") || messageText.includes("#backlog")) && topic && senderUserId) await this.createTask(chatId, messageId, senderUserId, topic, 0);
         }
     }
 
@@ -215,7 +218,6 @@ export class GramBotService implements OnModuleInit {
                     new Api.messages.SendReaction({
                         peer: `-100${task.project.group_id}`,
                         msgId: Number(messageId),
-                        //   @ts-ignore
                         reaction: [new Api.ReactionEmoji({emoticon:"👍"})]
                     })
                 );
@@ -267,7 +269,6 @@ export class GramBotService implements OnModuleInit {
                     new Api.messages.SendReaction({
                         peer: `-100${task.project.group_id}`,
                         msgId: Number(messageId),
-                        //   @ts-ignore
                         reaction: [new Api.ReactionEmoji({emoticon:"🤝"})]
                     })
                 ),
@@ -368,7 +369,7 @@ export class GramBotService implements OnModuleInit {
             const result: any = await this.client.invoke(
                 new Api.channels.GetMessages({
                     channel: channelId,
-                    //  @ts-ignore
+                    //  @ts-expect-error Telegram typings expect TypeInputMessage[]
                     id: [messageId],
                 })
             );

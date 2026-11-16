@@ -184,6 +184,8 @@ export class TaskService {
             }
         });
 
+        if (!project) throw new NotFoundException("Project not found");
+
         const participants = await this.prisma.user.findMany({
             where: {
                 username: {in: participant}
@@ -245,6 +247,9 @@ export class TaskService {
     {
         const taskId = Number(id);
         let statusID = Number(status_id);
+
+        await this.assertTaskAccess(user_id, taskId);
+
         try {
             const task = await this.prisma.task.findUnique({
                 where: {
@@ -313,6 +318,8 @@ export class TaskService {
 
     async updatePriority(user_id: number, priority_id: number, id: number)
     {
+        await this.assertTaskAccess(user_id, Number(id));
+
         try {
             const task = await this.prisma.task.findUnique({
                 where: {
@@ -354,6 +361,8 @@ export class TaskService {
 
         } catch (error) {
             console.log("Update status task: " + error);
+            if (error instanceof HttpException) throw error;
+            throw new HttpException("Failed to update priority", 500);
         }
     }
 
@@ -411,6 +420,8 @@ export class TaskService {
             return task;
         } catch (error) {
             console.log("Show task show id " + error);
+            if (error instanceof HttpException) throw error;
+            throw new HttpException("Failed to fetch task", 500);
         }
     }
 
@@ -418,7 +429,7 @@ export class TaskService {
     {
         if(usernames.length > 0)
         {
-            usernames.map(async (username) => {
+            await Promise.all(usernames.map(async (username) => {
                 try {
                     const user = await this.prisma.user.findFirst({
                         where: {
@@ -453,20 +464,35 @@ export class TaskService {
                 } catch (error) {
                     console.log("taskUser error" + error);
                 }
-            });
+            }));
         }
+    }
+
+    private async assertTaskAccess(user_id: number, task_id: number)
+    {
+        const task: any = await this.prisma.task.findUnique({
+            where: {
+                id: Number(task_id)
+            },
+            include: {
+                project: {
+                    select: {
+                        group_id: true
+                    }
+                }
+            }
+        });
+
+        if(!task) throw new NotFoundException("Task not found");
+
+        if(!(await this.userService.isGroupUser(task.project.group_id, String(user_id)))) throw new HttpException("Permission denied", 403);
     }
 
     async delete(user_id: number, id: number)
     {
         const taskId = Number(id);
-        const task = await this.prisma.task.findUnique({
-            where: {
-                id: taskId
-            }
-        });
 
-        if(!task) throw new NotFoundException("Task not found");
+        await this.assertTaskAccess(user_id, taskId);
 
         try {
             await this.prisma.$transaction([
@@ -507,22 +533,15 @@ export class TaskService {
             return "Deleted successfully";
         } catch (error) {
             console.log("Delete task error: " + error);
-            return "Not deleted"
+            throw new HttpException("Failed to delete task", 500);
         }
     }
 
     async archive(user_id: number, id: number, archive: boolean)
     {
+        await this.assertTaskAccess(user_id, Number(id));
+
         try {
-            const task = await this.prisma.task.findUnique({
-                where: {
-                    id: Number(id)
-                },
-                include: {
-                    project: true
-                }
-            });
-            if(!task) throw new NotFoundException("Task not found");
 
             let new_value: string = "Task was archived";
             let type: string = "archive";
@@ -566,26 +585,19 @@ export class TaskService {
             return "Successfully changed";
         } catch (error) {
             console.log("Archive error: " + error);
+            if (error instanceof HttpException) throw error;
+            throw new HttpException("Failed to archive task", 500);
         }
     }
 
     async comment(user_id: number, id: number, text: string)
     {
+        await this.assertTaskAccess(user_id, Number(id));
+
         try {
-            const task = await this.prisma.task.findUnique({
-                where: {
-                    id: Number(id)
-                },
-                include: {
-                    status: true,
-                    project: true,
-                }
-            });
-            if(!task) throw new NotFoundException("Task not found");
+            if(!text || text.trim() === "") throw new BadRequestException("Not found text");
 
-            if(text === "") throw new BadRequestException("Not found text");
-
-            const comment = this.prisma.taskComment.create({
+            const comment = await this.prisma.taskComment.create({
                 data: {
                     comment: text,
                     task_id: Number(id),
@@ -612,22 +624,14 @@ export class TaskService {
             throw new NotFoundException("Task not found"); 
         } catch (error) {
             console.log("create commment error: " + error);
-            throw new NotFoundException("Task not found"); 
+            if (error instanceof HttpException) throw error;
+            throw new HttpException("Failed to create comment", 500); 
         }
     }
 
     async participant(id: number, participant: number[], telegram_id: number)
     {
-        const task = await this.prisma.task.findUnique({
-            where: {
-                id: Number(id)
-            },
-            include: {
-                taskUser: true
-            }
-        });
-
-        if(!task) throw new NotFoundException("Task not found");
+        await this.assertTaskAccess(telegram_id, Number(id));
 
         try {
             if(participant.length > 0)
@@ -695,21 +699,14 @@ export class TaskService {
             return "success"
         } catch (error) {
             console.log("Update participant error: " + error);
+            if (error instanceof HttpException) throw error;
+            throw new HttpException("Failed to update participants", 500);
         }
     }
 
     async viewed(user_id: string, task_id: number)
     {
-        const tasks = await this.prisma.notification.findMany({
-            where: {
-                user_id,
-                change: {
-                    task_id: task_id
-                }
-            }
-        });
-
-        const viewedTasks = await this.prisma.notification.updateMany({
+        await this.prisma.notification.updateMany({
             where: {
                 user_id,
                 change: {
@@ -725,7 +722,7 @@ export class TaskService {
     }
 
     getFirstWords(input: string, wordCount: number): string {
-        let words = input.split(/\s+/);
+        const words = input.split(/\s+/);
         return words.slice(0, wordCount).join(" ");
     }
 
@@ -739,6 +736,8 @@ export class TaskService {
     {
         const {id, name, description, telegram_id} = params;
         const id_number = Number(id);
+
+        await this.assertTaskAccess(telegram_id, id_number);
         const checkUser = await this.prisma.user.findFirst({
             where: { telegram_id: String(telegram_id) },
             include: {
@@ -964,27 +963,8 @@ export class TaskService {
                 }
 
                 item.taskUser.map(taskUser => {
-                    if(users[taskUser.user_id])
+                    if(!users[taskUser.user_id])
                     {
-                        switch (item.status.order) {
-                            case 1:
-                                users[taskUser.user_id].todo+=1;
-                                break;
-                            case 2:
-                                users[taskUser.user_id].progress+=1;
-                                break;
-                            case 3:
-                                users[taskUser.user_id].testing+=1;
-                                break;
-                            case 4:
-                                users[taskUser.user_id].completed+=1;
-                                break;
-                            case 5:
-                                users[taskUser.user_id].cancelled+=1;
-                                break;
-                        }
-                         
-                    }else{
                         users[taskUser.user_id] = {
                             name: taskUser.user.name,
                             username: taskUser.user.username,
@@ -994,6 +974,24 @@ export class TaskService {
                             completed: 0,
                             cancelled: 0
                         }
+                    }
+
+                    switch (item.status?.order) {
+                        case 1:
+                            users[taskUser.user_id].todo+=1;
+                            break;
+                        case 2:
+                            users[taskUser.user_id].progress+=1;
+                            break;
+                        case 3:
+                            users[taskUser.user_id].testing+=1;
+                            break;
+                        case 4:
+                            users[taskUser.user_id].completed+=1;
+                            break;
+                        case 5:
+                            users[taskUser.user_id].cancelled+=1;
+                            break;
                     }
                 })
             });
@@ -1091,8 +1089,7 @@ export class TaskService {
             }
         });
 
-        console.log(project);
-        
+        if (!project) throw new NotFoundException("Project not found");
 
         const project_name = project.name + " | " + project.group.name;
         const days = this.getDateName(startOfWeek) + " - " + this.getDateName(endOfWeek);

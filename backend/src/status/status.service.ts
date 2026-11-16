@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { defaultStatuses } from './status.default';
 
@@ -13,7 +13,7 @@ export class StatusService {
         name: string,
         lang: string
     }){
-        const {project_id, name, lang} = data;
+        const {project_id, name} = data;
         const check = await this.prisma.status.findFirst({
             where: {
                 project_id: Number(project_id),
@@ -135,6 +135,8 @@ export class StatusService {
             return results;
         } catch (error) {
             console.log("Get Status error: " + error);
+            if (error instanceof HttpException) throw error;
+            throw new HttpException("Failed to fetch statuses", 500);
         }
     }
 

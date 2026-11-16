@@ -41,6 +41,7 @@ export class ProjectController {
   }
 
   @Post('init')
+  @UseGuards(UserGuard)
   async init(
     @Body() data: {
       groupId: number,
@@ -64,10 +65,12 @@ export class ProjectController {
   @Delete(":id")
   @UseGuards(UserGuard)
   async deleteFunc(
+    @Req() req,
     @Param("id") id: number,
     @Res() response: Response,
   ){
-    return response.json(await this.projectService.deleteFunc(id))
+    const {user} = req;
+    return response.json(await this.projectService.deleteFunc(id, user.telegram_id))
   }
 
   @Put(":id/notification")

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { CatchErrorDecorator } from 'src/decorators/catch.error.decorator';
 import { PrismaService } from 'src/prisma.service';
 import { StatusService } from 'src/status/status.service';
@@ -42,7 +42,7 @@ export class ProjectService {
             }
         }
 
-        let check = await this.prisma.project.findFirst(query);
+        const check = await this.prisma.project.findFirst(query);
 
         if (!check) 
         {
@@ -95,13 +95,14 @@ export class ProjectService {
             });
         } catch (error) {
             console.log("Error Project main: " + error);
+            if (error instanceof HttpException) throw error;
         }
     }
 
     async showById(props: {project_id: number, status?: number, user_ids?: string[], backlog?: boolean})
     {
-        const  {project_id, backlog} = props;
-        let {status, user_ids} = props;
+        const {project_id} = props;
+        let {status} = props;
         if(!status)
         {
             const statusId = await this.prisma.status.findFirst({
@@ -166,9 +167,11 @@ export class ProjectService {
                 }
             });
 
+            if (!project) return [];
+
             let mono_topic = false;
 
-            let users = await this.prisma.user.findMany({
+            const users = await this.prisma.user.findMany({
                 where: {
                     groupUsers: {
                         some: {
@@ -201,18 +204,18 @@ export class ProjectService {
                         username: user.username
                     }
 
-                    let role = user.project_users.find(u => u.project_id === Number(project_id))
+                    const role = user.project_users.find(u => u.project_id === Number(project_id))
                     if(role)
                     {
                         coveredUser.role_id = role.role_id;
                         coveredUser.role = role.role.name;
                     }else{
-                        const performer = project.project_roles.find(r => r.name === "member");
+                        const performer = project.project_roles.find(r => r.name === "user" || r.name === "member");
                         if(performer)
                         {
                             await this.connectRole(Number(project_id), Number(user.telegram_id), performer.id);
                             coveredUser.role_id = performer.id;
-                            coveredUser.role = "member";
+                            coveredUser.role = performer.name;
                         }
                     }
                     coveredUsers.push(coveredUser)
@@ -220,27 +223,27 @@ export class ProjectService {
                 project.users = coveredUsers;
             }
 
-            if(!project)  return [];
-
-            if (project.group.projects.length === 1) {
+            if (project.group?.projects?.length === 1) {
                 mono_topic = true;
             }
             project.group = {
                 id: project.group_id,
-                name: project.group.name
+                name: project.group?.name || ''
             }
             project.mono_topic = mono_topic;
 
             return project;
         } catch (error) {
             console.log("Project show by id: " + error);
+            if (error instanceof HttpException) throw error;
         }
     }
 
     async showByIdTasks(props: {project_id: number, status?: number, user_ids?: string[], backlog?: boolean})
     {
         const  {project_id, backlog} = props;
-        let {status, user_ids} = props;
+        let {status} = props;
+        const {user_ids} = props;
         if(!status)
         {
             const statusId = await this.prisma.status.findFirst({
@@ -312,10 +315,11 @@ export class ProjectService {
             return tasks ? tasks : [];
         } catch (error) {
             console.log("Project tasks error: " + error);
+            if (error instanceof HttpException) throw error;
         }
     }
 
-    async deleteFunc(id: number)
+    async deleteFunc(id: number, user_id: number)
     {
             const check = await this.prisma.project.findUnique({
                 where: {
@@ -335,6 +339,29 @@ export class ProjectService {
                 }
             });
             if(!check) throw new NotFoundException("Project not found");
+
+            // Authorization: user must be a member of the project's group
+            const groupMember = await this.prisma.groupUser.findFirst({
+                where: {
+                    group_id: check.group_id,
+                    user_id: String(user_id)
+                }
+            });
+
+            if(!groupMember) throw new HttpException("Permission denied", 403);
+
+            // Authorization: user must have the project "admin" role
+            const projectUser = await this.prisma.projectUser.findFirst({
+                where: {
+                    project_id: check.id,
+                    user_id: String(user_id)
+                },
+                include: {
+                    role: true
+                }
+            });
+
+            if(!projectUser || projectUser.role.name !== "admin") throw new HttpException("Permission denied", 403);
 
             if (check.tasks.length > 0) {
                 for (const task of check.tasks) {
@@ -523,9 +550,6 @@ export class ProjectService {
 
         if(!project) throw new NotFoundException("Project not found");
         let projectNotificationPermissions = JSON.stringify([]);
-        let permissions = JSON.parse(project.projectNotificationPermissions)[0];
-
-        console.log(permissions);
         
 
         if(JSON.parse(project.projectNotificationPermissions).includes("comment")) 
@@ -579,6 +603,7 @@ export class ProjectService {
             
         } catch (error) {
             console.log("notification_all", error);
+            if (error instanceof HttpException) throw error;
         }
     }
 

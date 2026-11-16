@@ -15,6 +15,10 @@ export class NotificationService {
       
     }
 
+    private getLang(code?: string) {
+        return languages[code] || languages.en;
+    }
+
     async notificationSender(id: number)
     {
         const change = await this.prisma.taskChange.findUnique({
@@ -138,7 +142,7 @@ export class NotificationService {
             parse_mode: 'html',
         };
 
-        let inlineKeyboard = this.inlineKeyboard(String(process.env.TELEGRAM_WEB_APP_URL) + `?startapp=tasks_${change.task_id}`, languages.en.open_task);
+        const inlineKeyboard = this.inlineKeyboard(String(process.env.TELEGRAM_WEB_APP_URL) + `?startapp=tasks_${change.task_id}`, languages.en.open_task);
 
         if (topic && topic !== 1) data.message_thread_id = topic;
         if (inlineKeyboard) data.reply_markup = inlineKeyboard;
@@ -149,7 +153,13 @@ export class NotificationService {
                 await axios.post(this.url, data);
                 if(users.length)
                 {
-                    const messages = users.map((user) => ({...data, chat_id: user.telegram_id, message_thread_id: null}));
+                    const dmBaseData: SendData = {
+                        chat_id: data.chat_id,
+                        text: data.text,
+                        parse_mode: data.parse_mode,
+                        ...(data.reply_markup ? { reply_markup: data.reply_markup } : {}),
+                    };
+                    const messages = users.map((user) => ({...dmBaseData, chat_id: user.telegram_id}));
                     await Promise.all(messages.map((msg) => axios.post(this.url, msg)))
                     await this.prisma.notification.createMany({
                         data: users.map((u) => (
@@ -283,9 +293,11 @@ export class NotificationService {
         });
 
 
+        if (!notification?.change?.task) return;
+
         const task = notification.change.task;
         const change = notification.change;
-        const userLanguage = languages[notification.user.language_code];
+        const userLanguage = this.getLang(notification.user?.language_code);
 
         const oldValueStr = change.old_value === "comment" ? change.new_value : `<s>${change.old_value}</s> ➡️  ${change.new_value}`;
         const priorityStr = change.type === 'priority' ? 
@@ -302,11 +314,11 @@ ${oldValueStr}${priorityStr}`}`;
 
 
         try {
-            const check = await axios.post(this.url, {
+            await axios.post(this.url, {
                 chat_id: user_id,
                 text,
                 parse_mode: 'html',
-                reply_markup: this.inlineKeyboard(String(process.env.TELEGRAM_WEB_APP_URL) + `?startapp=tasks_${notification.change.task_id}`, languages[notification.user.language_code].open_task)
+                reply_markup: this.inlineKeyboard(String(process.env.TELEGRAM_WEB_APP_URL) + `?startapp=tasks_${notification.change.task_id}`, userLanguage.open_task)
             });
         } catch (error) {
             console.log(error.message);
@@ -316,15 +328,15 @@ ${oldValueStr}${priorityStr}`}`;
     @CatchErrorDecorator()
     async notificationStatus(params: {status: string, author: string, users: any[], project: string, changed_user: string, text: string, user_name?: string})
     {
-        const { author, project, changed_user, text, user_name} = params;
-        let { status, users } = params;
+        const { author, project, changed_user, text, user_name, users} = params;
+        let { status } = params;
         let list: string = author
         
         if(!this.statuses.includes(status)) status = this.statuses[0];
         if(status === 'Completed') status = 'Completed✅';
         if(users.length) list = users.join(", ");
 
-        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : user_name}
+        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : changed_user}
 ${text}
 
 ▫️Status: ${status}
@@ -351,13 +363,12 @@ Participants: ${list}`;
     @CatchErrorDecorator()
     async notificationPriority(params: {priority: string, author: string, users: any[], project: string, changed_user: string, text: string,  user_name?: string})
     {
-        const { author, project, changed_user, text, user_name} = params;
-        let { priority, users } = params;
+        const { author, project, changed_user, text, user_name, priority, users} = params;
         let list: string = author
         
         if(users.length) list = users.join(", ");
 
-        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : user_name}
+        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : changed_user}
 ${text}
 
 📊Priority: ${this.priorities[priority]}
@@ -370,8 +381,7 @@ Participants: ${list}`;
     @CatchErrorDecorator()
     async notificationTask(params: {author: string, users: any[], project: string, changed_user: string, text: string})
     {
-        const { author, project, text} = params;
-        let { users } = params;
+        const { author, project, text, users} = params;
         let list: string = author
         
         if(users.length) list = users.join(", ");
@@ -387,13 +397,12 @@ Participants: ${list}`;
     @CatchErrorDecorator()
     async notificationComment(params: {author: string, users: any[], project: string, changed_user: string, text: string, comment: string, user_name?: string})
     {
-        const { author, project, text, comment, changed_user, user_name} = params;
-        let { users } = params;
+        const { author, project, text, comment, changed_user, user_name, users} = params;
         let list: string = author;
         
         if(users.length) list = users.join(", ");
 
-        return `#comment by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : user_name}
+        return `#comment by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : changed_user}
 ${text}
 
 💬Comment: ${comment}
@@ -406,13 +415,12 @@ Participants: ${list}`;
     @CatchErrorDecorator()
     async notificationDeadline(params: {author: string, users: any[], project: string, changed_user: string, text: string, deadline: Date, user_name?: string})
     {
-        const { author, project, text, deadline, changed_user, user_name} = params;
-        let { users } = params;
+        const { author, project, text, deadline, changed_user, user_name, users} = params;
         let list: string = author;
         
         if(users.length) list = users.join(", ");
 
-        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : user_name}
+        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : changed_user}
 ${text}
 
 🗓Deadline: <b>${deadline}</b>
@@ -425,13 +433,12 @@ Participants: ${list}`;
     @CatchErrorDecorator()
     async notificationParticipant(params: {author: string, users: any[], project: string, changed_user: string, text: string, user_name?: string})
     {
-        const { author, project, text, changed_user, user_name} = params;
-        let { users } = params;
+        const { author, project, text, changed_user, user_name, users} = params;
         let list: string = author;
         
         if(users.length) list = users.join(", ");
 
-        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : user_name}
+        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : changed_user}
 ${text}
 
 👥Participants changed: <b>${list}</b>
@@ -444,13 +451,12 @@ Participants: ${list}`;
     @CatchErrorDecorator()
     async notificationArchive(params: {author: string, users: any[], project: string, changed_user: string, text: string, user_name?: string})
     {
-        const { author, project, text, changed_user, user_name} = params;
-        let { users } = params;
+        const { author, project, text, changed_user, user_name, users} = params;
         let list: string = author;
         
         if(users.length) list = users.join(", ");
 
-        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : user_name}
+        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : changed_user}
 ${text}
 
 🗂️Archived
@@ -463,13 +469,12 @@ Participants: ${list}`;
     @CatchErrorDecorator()
     async notificationUnarchive(params: {author: string, users: any[], project: string, changed_user: string, text: string, user_name?: string})
     {
-        const { author, project, text, changed_user, user_name} = params;
-        let { users } = params;
+        const { author, project, text, changed_user, user_name, users} = params;
         let list: string = author;
         
         if(users.length) list = users.join(", ");
 
-        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : user_name}
+        return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : changed_user}
 ${text}
 
 📤Unarchived
@@ -497,7 +502,7 @@ Participants: ${list}`;
                 };
                 
                 const daysToSubtract = priorityDaysMap[task.priority];
-                if (!daysToSubtract || !task.taskUser.length)  return; 
+                if (!daysToSubtract || !task.taskUser.length)  continue; 
                 const ago = new Date();
                 ago.setDate(ago.getDate() - daysToSubtract);
 
@@ -509,8 +514,8 @@ Participants: ${list}`;
                     if(users.length) list = users.join(", ");
 
                     for (const user of task.taskUser) {
-
-                        const sendedText = `${text[user.user.language_code]}
+                        const langCode = user.user?.language_code;
+                        const sendedText = `${text[langCode] || text.en}
                             
 ${task.name}
                             
@@ -525,7 +530,7 @@ Participants: ${list}`;
                                 parse_mode: 'html',
                                 reply_markup: this.inlineKeyboard(
                                     `${process.env.TELEGRAM_WEB_APP_URL}?startapp=tasks_${task.id}`,
-                                    languages[user.user.language_code].open_task
+                                    this.getLang(langCode).open_task
                                 )
                             });
                         } catch (error) {
@@ -557,7 +562,6 @@ Participants: ${list}`;
             progress,
             testing,
             completed,
-            cancelled,
             users
         } = data;
         const dataShaper = Object.values(users).map(element => element)
@@ -600,11 +604,11 @@ ${sendedTable}
 
         const maxNameLength = Math.max(...data.map(item => item.name.length));
     
-        let table = `Name${" ".repeat(maxNameLength - 4 + 2)}T/P/T/C\n`; 
+        let table = `Name${" ".repeat(Math.max(1, maxNameLength - 4 + 2))}T/P/T/C\n`; 
         table += "--------------------------\n"; 
     
         data.forEach(item => {
-            const padding = " ".repeat(maxNameLength - item.name.length + 3);
+            const padding = " ".repeat(Math.max(1, maxNameLength - item.name.length + 3));
             table += `<a href='https://t.me/${item.username}'>${item.name}</a>${padding}${item.todo}/${item.progress}/${item.testing}/${item.completed}\n`;
         });
     

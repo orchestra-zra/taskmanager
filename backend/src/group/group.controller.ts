@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Post, Put, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Req, Res, UseGuards } from '@nestjs/common';
 import { GroupService } from './group.service';
 import { Response } from 'express';
 import { UserGuard } from 'src/user/user.guard';
@@ -45,6 +45,7 @@ export class GroupController {
   }
 
   @Post("init")
+  @UseGuards(UserGuard)
   async init(
     @Body() data: {
       id: number,
@@ -81,12 +82,10 @@ export class GroupController {
   @Get(":id/users")
   @UseGuards(UserGuard)
   async users(
-    @Req() req,
     @Res() response: Response,
     @Param("id") id: string,
   ){
-    const {user} = req;
-    return response.json(await this.groupService.users(id, user.telegram_id))
+    return response.json(await this.groupService.users(id))
   }
 
 }

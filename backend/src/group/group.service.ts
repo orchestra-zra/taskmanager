@@ -91,8 +91,9 @@ export class GroupService {
                     });
     
                     const checkRole = participats.find(p => Number(p.userId) === Number(user_id));
-                    
-                    const role = checkRole.adminRights ? project.project_roles.find(pr => pr.name === "admin") : project.project_roles.find(pr => pr.name !== "admin")
+                    const isAdmin = Boolean(checkRole?.adminRights);
+                    const role = isAdmin ? project.project_roles.find(pr => pr.name === "admin") : project.project_roles.find(pr => pr.name !== "admin");
+                    if (!role) continue;
     
                     if(projectUser)
                     {
@@ -224,6 +225,8 @@ export class GroupService {
                 }
             });
 
+            if (!group) return null;
+
             if(group.projects.length)
             {
                 const projects: any[] = [];
@@ -250,7 +253,13 @@ export class GroupService {
         }
     }
 
-    async selected(id: string, is_selected: string, user_id: string)
+    private toBoolean(value: unknown): boolean {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') return value.trim().toLowerCase() === 'true';
+        return Boolean(value);
+    }
+
+    async selected(id: string, is_selected: string | boolean, user_id: string)
     {
         console.log("selected", user_id, is_selected, id);
         const check = await this.prisma.group.findFirst({
@@ -267,7 +276,7 @@ export class GroupService {
                 }
              },
             data: {
-                is_selected: Boolean(is_selected)
+                is_selected: this.toBoolean(is_selected)
             }
         })
     }
@@ -353,7 +362,7 @@ export class GroupService {
                         }
                      },
                     data: {
-                        is_selected: Boolean(element.is_selected)
+                        is_selected: this.toBoolean(element.is_selected)
                     }
                 })
             }
@@ -362,7 +371,7 @@ export class GroupService {
         return await this.userService.groups(user_id);
     }
 
-    async users(group_id: string, user_id?: string)
+    async users(group_id: string)
     {
         try {
             return await this.prisma.groupUser.findMany({

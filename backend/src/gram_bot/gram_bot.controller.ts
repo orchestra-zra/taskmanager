@@ -1,9 +1,11 @@
-import { Controller, Get, Res } from '@nestjs/common';
+import { Controller, Get, Res, UseGuards } from '@nestjs/common';
 import { GramBotService } from './gram_bot.service';
 import axios from 'axios';
 import { Response } from 'express';
+import { UserGuard } from 'src/user/user.guard';
 
 @Controller('gram-bot')
+@UseGuards(UserGuard)
 export class GramBotController {
   constructor(private readonly gramBotService: GramBotService) {}
 
