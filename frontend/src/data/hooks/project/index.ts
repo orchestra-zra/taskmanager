@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../../../common/axiosClient";
 import { toast } from "react-toastify";
@@ -11,7 +11,9 @@ export const useDeleteProject = (id: number) => {
   return useMutation({
     mutationFn: () => axiosClient.delete(`/project/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries("projects");
+      queryClient.invalidateQueries({ queryKey: ["groupsData"] });
+      queryClient.invalidateQueries({ queryKey: ["groupSelect"] });
+      queryClient.invalidateQueries({ queryKey: ["groupData"] });
       toast.success(t("delete project success"), {
         position: "top-right",
         autoClose: 3000,
@@ -41,8 +43,15 @@ export const useEditNotification = (id: number) => {
     mutationFn: ({ type, value }: { type: string; value: boolean }) =>
       axiosClient.put(`/project/${id}/notification`, { type, value }),
     onSuccess: () => {
-      queryClient.invalidateQueries(["groupProjectData", String(id)]);
-      queryClient.invalidateQueries(["groupProjectData"]);
+      queryClient.invalidateQueries({ queryKey: ["groupProjectData", String(id)] });
+      queryClient.invalidateQueries({ queryKey: ["groupProjectData"] });
+    },
+    onError: (error) => {
+      toast.error(t("error_save"), {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      console.error("Edit notification error:", error);
     },
   });
 };

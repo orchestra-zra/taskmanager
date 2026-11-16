@@ -9,11 +9,12 @@ import { Avatar } from "../components/mini/Avatar";
 import capitalizeFirstLetter from "../common/capitalizeFirstLetter";
 import { t } from "i18next";
 import { useGroups } from "../data/hooks/group";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import { Loader } from "../components/mini/Loader";
 import WebApp from "@twa-dev/sdk";
 import { UserInterface } from "../data/hooks/users/interface";
+import ErrorState from "../components/ErrorState";
 
 interface IMyTasksState {
   statuses: IStatus[];
@@ -124,13 +125,11 @@ const Mytasks = () => {
     return response.data;
   };
 
-  const { data: statuses } = useQuery(
-    ["statuses", selectedProject?.id],
-    fetchStatuses,
-    {
-      enabled: true,
-    },
-  );
+  const { data: statuses } = useQuery({
+    queryKey: ["statuses", selectedProject?.id],
+    queryFn: fetchStatuses,
+    enabled: true,
+  });
 
   useEffect(() => {
     if (statuses) {
@@ -144,9 +143,16 @@ const Mytasks = () => {
         getTasks(statuses[0].name);
       }
     }
+    // `getTasks` is a plain async helper recreated every render; adding it to
+    // deps would make this effect run after every render (it calls setState,
+    // so render -> effect -> render would loop). The task fetch is
+    // intentionally keyed to the `statuses` query result only; getTasks still
+    // reads the current selectedProject via closure, same as before.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statuses]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [tasksError, setTasksError] = useState<unknown>(null);
 
   const getTasks = async (statusName: string) => {
     try {
@@ -159,11 +165,18 @@ const Mytasks = () => {
       } else {
         setState({ tasks: [] });
       }
+      setTasksError(null);
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching tasks:", error);
       setState({ tasks: [] });
+      setTasksError(error);
+      setIsLoading(false);
     }
+  };
+
+  const retryGetTasks = () => {
+    getTasks(state.statuses[state.index]?.name ?? "");
   };
 
   useEffect(() => {
@@ -279,6 +292,8 @@ const Mytasks = () => {
                 .map((task: IProject) => (
                   <MyTask key={task?.id} project={task} />
                 ))
+            ) : !isLoading && tasksError ? (
+              <ErrorState onRetry={retryGetTasks} />
             ) : !isLoading && (
               <div className='mt-5 text-gray-400'>{t("no_task_yet")}</div>
             )}

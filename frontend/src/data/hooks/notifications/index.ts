@@ -1,4 +1,6 @@
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
+import { t } from "i18next";
 import { notificationApi } from "../../api/notifications";
 
 export const useChangeNotificationAll = () => {
@@ -8,7 +10,13 @@ export const useChangeNotificationAll = () => {
     mutationFn: ({ id, value }: { id: string | undefined; value: boolean }) =>
       notificationApi.changeNotification(id, value),
     onSuccess: () => {
-      queryClient.invalidateQueries(["groupProjectData"]);
+      queryClient.invalidateQueries({ queryKey: ["groupProjectData"] });
+    },
+    onError: () => {
+      toast.error(t("error_save"), {
+        position: "top-right",
+        autoClose: 3000,
+      });
     },
   });
 
@@ -22,7 +30,13 @@ export const useChangeNotificationStatusAll = () => {
     mutationFn: ({ id, value }: { id: string | undefined; value: boolean }) =>
       notificationApi.changeNotificationStatus(id, value),
     onSuccess: () => {
-      queryClient.invalidateQueries(["groupProjectData"]);
+      queryClient.invalidateQueries({ queryKey: ["groupProjectData"] });
+    },
+    onError: () => {
+      toast.error(t("error_save"), {
+        position: "top-right",
+        autoClose: 3000,
+      });
     },
   });
 

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { taskApi } from "../../api/tasks";
 import { toast } from "react-toastify";
@@ -14,6 +14,10 @@ export const useCreateTask = () => {
     },
     onError: (error) => {
       console.error("Error creating task:", error);
+      toast.error(t("error_create_task"), {
+        position: "top-right",
+        autoClose: 3000,
+      });
     },
   });
 };
@@ -29,14 +33,14 @@ export const useDeleteTask = (project_id?: number) => {
         position: "top-right",
         autoClose: 3000,
       });
-      queryClient.invalidateQueries({ queryKey: "tasksDate" });
-      queryClient.invalidateQueries({ queryKey: "archiveTasks" });
+      queryClient.invalidateQueries({ queryKey: ["tasksDate"] });
+      queryClient.invalidateQueries({ queryKey: ["archiveTasks"] });
       if (project_id) {
         navigate(`/projects/${project_id}`, { replace: true });
       }
     },
     onError: () => {
-      toast.error("Error deleting the item.", {
+      toast.error(t("error_delete_task"), {
         position: "top-right",
         autoClose: 3000,
       });
@@ -47,37 +51,35 @@ export const useDeleteTask = (project_id?: number) => {
 export const useArchiveTask = () => {
   const queryClient = useQueryClient();
 
-  return useMutation(
-    async ({ isArchived, taskId }: { isArchived: boolean; taskId: number }) => {
+  return useMutation({
+    mutationFn: async ({ isArchived, taskId }: { isArchived: boolean; taskId: number }) => {
       return axiosClient.put(`/task/${taskId}/archive`, {
         archive: isArchived,
       });
     },
-    {
-      onSuccess: (isArchived) => {
-        const message = isArchived
-          ? t("success_message_archive")
-          : t("success_message_unarchive");
-        toast.success(message, {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-        });
+    onSuccess: (_data, variables) => {
+      const message = variables.isArchived
+        ? t("success_message_archive")
+        : t("success_message_unarchive");
+      toast.success(message, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+      });
 
-        queryClient.invalidateQueries({ queryKey: ["taskData"] });
-        queryClient.invalidateQueries({ queryKey: ["archiveTasks"] });
-      },
-      onError: (error) => {
-        console.error("Error:", error);
-        toast.error("Error archiving the item.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-      },
+      queryClient.invalidateQueries({ queryKey: ["taskData"] });
+      queryClient.invalidateQueries({ queryKey: ["archiveTasks"] });
     },
-  );
+    onError: (error) => {
+      console.error("Error:", error);
+      toast.error(t("error_archive_task"), {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    },
+  });
 };
 
 export const useUpdateParticipants = (
@@ -86,57 +88,63 @@ export const useUpdateParticipants = (
 ) => {
   const queryClient = useQueryClient();
 
-  return useMutation(
-    async (selectedUsers: string[]) => {
+  return useMutation({
+    mutationFn: async (selectedUsers: string[]) => {
       return axiosClient.put(`/task/${taskId}/participant`, {
         participant: selectedUsers,
       });
     },
-    {
-      onSuccess: () => {
-        onSuccessCallback();
-        queryClient.invalidateQueries({ queryKey: ["taskData"] });
-      },
-      onError: (error) => {
-        console.error("Error updating participants:", error);
-      },
+    onSuccess: () => {
+      onSuccessCallback();
+      queryClient.invalidateQueries({ queryKey: ["taskData"] });
     },
-  );
+    onError: (error) => {
+      console.error("Error updating participants:", error);
+      toast.error(t("error_update_participants"), {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    },
+  });
 };
 
 export const useUpdateStatus = (taskId: number) => {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, number>(
-    (status) => axiosClient.put(`/task/${taskId}/status`, { status }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["taskData"] });
-        queryClient.invalidateQueries({ queryKey: ["tasksDate"] });
-        queryClient.invalidateQueries({ queryKey: ["statuses"] });
-      },
-      onError: (error) => {
-        console.log("Update status error:", error);
-      },
+  return useMutation<void, Error, number>({
+    mutationFn: (status) => axiosClient.put(`/task/${taskId}/status`, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskData"] });
+      queryClient.invalidateQueries({ queryKey: ["tasksDate"] });
+      queryClient.invalidateQueries({ queryKey: ["statuses"] });
     },
-  );
+    onError: (error) => {
+      console.log("Update status error:", error);
+      toast.error(t("error_update_status"), {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    },
+  });
 };
 
 export const useUpdatePriority = (taskId: number) => {
   const queryClient = useQueryClient();
 
-  return useMutation(
-    (priority: number) =>
+  return useMutation({
+    mutationFn: (priority: number) =>
       axiosClient.put(`/task/${taskId}/priority`, { priority }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["taskData"] });
-      },
-      onError: (error) => {
-        console.error("Update priority error:", error);
-      },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskData"] });
     },
-  );
+    onError: (error) => {
+      console.error("Update priority error:", error);
+      toast.error(t("error_update_priority"), {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    },
+  });
 };
 
 export const useGetTasks = () => {

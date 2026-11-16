@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 const AppContext = createContext({});
 
-function AppProvider({ children }: PropsWithChildren<{}>) {
+function AppProvider({ children }: PropsWithChildren) {
   const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => {
@@ -24,6 +24,13 @@ function AppProvider({ children }: PropsWithChildren<{}>) {
     };
 
     initializeWebApp();
+    // Mount-only by design: this registers the Telegram SettingsButton and
+    // BackButton onClick handlers exactly once. `navigate` identity changes on
+    // every navigation (react-router v6), and adding it here would re-register
+    // the handlers on each route change — Telegram would then fire every
+    // registered callback per press (multiple history.back() calls / redirects).
+    // The WebApp init/expand/setBackgroundColor calls must also run only once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     const root = document.documentElement;
@@ -53,4 +60,8 @@ const useAppContext = () => {
   return context;
 };
 
+// AppContext and the useAppContext hook are intentionally co-located with
+// AppProvider (single small context module for this app); splitting them into
+// separate files would add indirection without benefit.
+// eslint-disable-next-line react-refresh/only-export-components
 export { AppProvider, AppContext, useAppContext };

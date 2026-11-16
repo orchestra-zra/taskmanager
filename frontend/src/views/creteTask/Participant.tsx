@@ -30,7 +30,6 @@ const Participant = ({
 
   const getUsers = useCallback(async () => {
     const result = await getUsersData(`${project.group_id}`);
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     setUsers(result);
   }, [project.group_id]);
 
@@ -92,7 +91,6 @@ const Participant = ({
           className='bg-black opacity-45 z-10 fixed top-0 left-0 w-full h-full'
           onClick={() => {
             setOpenParticipant(false);
-            setSelectedUsers([]);
           }}
         ></div>
       )}

@@ -19,7 +19,7 @@ const StatusSelector = (props: IProps) => {
     "Completed": "completed",
   };
 
-  statuses = statuses.filter((s: any, ind: number) => {s; return ind !== 4})
+  statuses = statuses.filter((_s: IStatus, ind: number) => ind !== 4)
 
   return (
     <>

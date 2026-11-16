@@ -150,5 +150,18 @@
     "archive_empty": "Архив проекта пуст",
     "task_empty": "Задач еще нет",
     "show_comment_text": "Комментарии оставленные в приложении будут отображаться в чате.",
-    "send_weekly_analytics": "Получить аналитку Manit App за неделю в бот"
+    "send_weekly_analytics": "Получить аналитку Manit App за неделю в бот",
+    "error_generic": "Что-то пошло не так",
+    "error_retry": "Повторить",
+    "delete_confirmation_word": "Sure",
+    "type_here": "Введите здесь",
+    "error_create_task": "Не удалось создать задачу",
+    "error_update_status": "Не удалось обновить статус",
+    "error_update_priority": "Не удалось обновить приоритет",
+    "error_update_participants": "Не удалось обновить участников",
+    "error_delete_task": "Не удалось удалить задачу",
+    "error_archive_task": "Не удалось архивировать задачу",
+    "error_comment": "Не удалось отправить комментарий",
+    "error_save": "Не удалось сохранить",
+    "weekly_status_sent": "Запрос недельного статуса отправлен"
 }

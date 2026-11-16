@@ -41,7 +41,7 @@ const EventPromo = (props: IEventProps) => {
   const changes = props.group?.events?.flatMap((el: IEvent) => el.changes);
 
   // if topic_id == 1 need group_id
-  const ID = true ? props.group?.project_id : 1;
+  const ID = props.group?.project_id ?? 1;
 
   const { color1000, color80, color250 } = useUserColor(ID);
 
