@@ -19,15 +19,11 @@ export class UserGuard implements CanActivate {
           telegram_id: String(userInit.user.id)
         }
       });
-      const isTestModeUser =
-        userInit.hash === 'testHash' &&
-        (process.env.NODE_ENV !== 'production' ||
-          process.env.ENABLE_TEST_MODE === 'true');
-      if (!user && isTestModeUser) {
+      if (!user && userInit?.user?.id) {
         user = await this.prisma.user.create({
           data: {
             telegram_id: String(userInit.user.id),
-            name: userInit.user.firstName || 'Test User',
+            name: userInit.user.firstName || 'User',
             username: userInit.user.username || null,
             language_code: userInit.user.languageCode || 'en',
           },

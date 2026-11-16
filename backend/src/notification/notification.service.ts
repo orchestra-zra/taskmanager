@@ -254,6 +254,31 @@ export class NotificationService {
         }
     }
 
+    async sendStartAppButton(userId: number)
+    {
+        const webAppUrl = process.env.TELEGRAM_WEB_APP_URL || 'https://t.me/trello_zra_bot/trello_app';
+        const data: any = {
+            chat_id: Number(userId),
+            text: "<b>Plan Jet 🚀</b>",
+            parse_mode: 'html',
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: "Open",
+                            url: String(webAppUrl)
+                        }
+                    ]
+                ]
+            }
+        };
+        try {
+            await axios.post(this.url, data);
+        } catch (error) {
+            console.log("sendStartAppButton error: " + error);
+        }
+    }
+
     inlineKeyboard(url: string, text: string = languages.en.dashboard)
     {
         return {

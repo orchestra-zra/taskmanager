@@ -163,6 +163,14 @@ export class GramBotService implements OnModuleInit {
                     }
                 }
                 break;
+            case "/miniapp":
+                {
+                    const targetUserId = chatId?.userId || senderUserId;
+                    if (targetUserId) {
+                        await this.notificationService.sendStartAppButton(targetUserId);
+                    }
+                }
+                break;
             case "/dashboard": 
                 if (chatId?.channelId) {
                     await this.notificationService.addBotToChannel(chatId.channelId, 'dashboard', topic);
@@ -413,6 +421,7 @@ export class GramBotService implements OnModuleInit {
         } catch (error) {
             console.log("Send permissions image error: " + error);
         }
+        await this.notificationService.sendStartAppButton(userId);
     }
 
     private async removeMessage(channel: string, messageId: number)
