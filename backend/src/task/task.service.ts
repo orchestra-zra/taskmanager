@@ -494,15 +494,6 @@ export class TaskService {
 
         await this.assertTaskAccess(user_id, taskId);
 
-        if(!(await this.userService.isGroupUser(task.project.group_id, String(user_id)))) throw new HttpException("Permission denied", 403);
-    }
-
-    async delete(user_id: number, id: number)
-    {
-        const taskId = Number(id);
-
-        await this.assertTaskAccess(user_id, taskId);
-
         try {
             await this.prisma.$transaction([
                 this.prisma.notification.deleteMany({
@@ -549,8 +540,6 @@ export class TaskService {
     async archive(user_id: number, id: number, archive: boolean)
     {
         await this.assertTaskAccess(user_id, Number(id));
-
-        try {
 
         try {
             let new_value: string = "Task was archived";

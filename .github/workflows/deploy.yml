@@ -1,0 +1,74 @@
+name: CI & Auto-Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - backend
+  pull_request:
+    branches:
+      - main
+      - backend
+  workflow_dispatch:
+
+concurrency:
+  group: taskmanager-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Build & Test (Backend + Frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Build backend and frontend
+        run: npm run build
+
+      - name: Run backend tests
+        run: npm --workspace=backend run test
+
+      - name: Run frontend tests
+        run: npm --workspace=frontend run test
+
+  deploy:
+    name: Trigger Server Auto-Deploy
+    needs: verify
+    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/backend')) || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger safe deploy on Oracle server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "${DEPLOY_HOST}" ] || [ -z "${DEPLOY_SSH_KEY}" ]; then
+            echo "DEPLOY_HOST / DEPLOY_SSH_KEY secrets are not set; server-side taskmanager-autodeploy.timer will pull and deploy within ~30s."
+            exit 0
+          fi
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          SSH_PORT="${DEPLOY_PORT:-22}"
+          SSH_USER="${DEPLOY_USER:-ubuntu}"
+          SSH_OPTS="-i ~/.ssh/deploy_key -p ${SSH_PORT} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+
+          ssh ${SSH_OPTS} "${SSH_USER}@${DEPLOY_HOST}" "/usr/local/bin/taskmanager-deploy"

@@ -1,5 +1,18 @@
 services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
+
+  backend:
+    ports: !override
+      - "127.0.0.1:${BACKEND_HOST_PORT:-8001}:8000"
+
+  frontend:
+    ports: !override
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:80"
+
   caddy:
+    profiles: ["caddy"]
     image: caddy:2.8-alpine
     container_name: planjet-caddy
     restart: unless-stopped
@@ -14,7 +27,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     environment:
-      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in root .env before starting production HTTPS proxy}
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
 
 volumes:
   caddy_data:
