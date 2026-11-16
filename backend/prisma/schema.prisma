@@ -34,6 +34,8 @@ model User {
 model Group {
   id String @id
   name String
+  // "channel" = supergroup/forum, "chat" = legacy basic group (no topics possible)
+  type String @default("channel")
 
   groupUsers GroupUser[]
   projects Project[]

@@ -5,6 +5,7 @@ import { ProjectService } from 'src/project/project.service';
 import { TaskService } from 'src/task/task.service';
 import { UserService } from 'src/user/user.service';
 import { TelegramClient, Api } from 'telegram';
+import bigInt = require('big-integer');
 import { NewMessage } from 'telegram/events';
 import { StringSession } from 'telegram/sessions';
 import * as fs from 'fs';
@@ -137,21 +138,24 @@ export class GramBotService implements OnModuleInit {
         
         if (!message) return;
         const chatId = message?.peerId;
+        // Basic (legacy) groups arrive as peerId.chatId, supergroups/forums as peerId.channelId
+        const isBasicGroup = !!chatId?.chatId;
+        const groupId = chatId?.channelId ?? chatId?.chatId;
         const messageId = message.id;
         const messageText: string = message.message || '';
         const senderUserId = message.fromId?.userId;
         let topic: any;
         console.log(`Received message: ${messageText}`);
-        if (messageText !== "/start" && chatId?.channelId) 
+        if (messageText !== "/start" && groupId)
         {
-            const initGroup = await this.getChannel(chatId.channelId);
-            if(initGroup) topic = await this.getChannelTopics(chatId.channelId, messageId);
+            const initGroup = await this.getChannel(groupId, isBasicGroup);
+            if(initGroup) topic = await this.getChannelTopics(groupId, messageId, isBasicGroup);
         }
 
         switch (this.normalizeBotCommand(messageText))
         {
             case "Plan Jet 🚀":
-                if (chatId?.channelId) await this.pinPermission(chatId.channelId, messageId);
+                if (groupId) await this.pinPermission(groupId, messageId, isBasicGroup);
                 break;
             case "/start": 
                 {
@@ -171,23 +175,23 @@ export class GramBotService implements OnModuleInit {
                     }
                 }
                 break;
-            case "/dashboard": 
-                if (chatId?.channelId) {
-                    await this.notificationService.addBotToChannel(chatId.channelId, 'dashboard', topic);
-                    await this.removeMessage(chatId.channelId, messageId);
+            case "/dashboard":
+                if (groupId) {
+                    await this.notificationService.addBotToChannel(groupId, 'dashboard', topic);
+                    await this.removeMessage(groupId, messageId, isBasicGroup);
                 }
                 break;
-            case "/commands": 
-                if (chatId?.channelId) {
-                    await this.notificationService.addBotToChannel(chatId.channelId, 'commands', topic);
-                    await this.removeMessage(chatId.channelId, messageId);
+            case "/commands":
+                if (groupId) {
+                    await this.notificationService.addBotToChannel(groupId, 'commands', topic);
+                    await this.removeMessage(groupId, messageId, isBasicGroup);
                 }
                 break;
-            
+
             case "/add":
                 if(message.replyTo && topic && senderUserId)
                 {
-                    await this.createTask(chatId, message.replyTo.replyToMsgId, senderUserId, topic, messageId);
+                    await this.createTask(groupId, isBasicGroup, message.replyTo.replyToMsgId, senderUserId, topic, messageId);
                 }else{
                     await this.sendMessage(chatId, "Task not found", messageId);
                 }
@@ -195,7 +199,7 @@ export class GramBotService implements OnModuleInit {
             case "/done":
                 if (message.replyTo && topic && senderUserId) {
                     await this.doneTask(message.replyTo.replyToMsgId, senderUserId, messageId);
-                    if (chatId?.channelId) await this.removeMessage(chatId.channelId, messageId);
+                    if (groupId) await this.removeMessage(groupId, messageId, isBasicGroup);
                 } else {
                     await this.sendMessage(chatId, "Task not found", messageId);
                 }
@@ -203,7 +207,7 @@ export class GramBotService implements OnModuleInit {
 
             default:
                 if (message.replyTo && senderUserId && messageText) await this.commentCreate(message.replyTo.replyToMsgId, senderUserId, messageId, messageText);
-                if((messageText.includes("#task") || messageText.includes("#backlog")) && topic && senderUserId) await this.createTask(chatId, messageId, senderUserId, topic, 0);
+                if((messageText.includes("#task") || messageText.includes("#backlog")) && topic && senderUserId) await this.createTask(groupId, isBasicGroup, messageId, senderUserId, topic, 0);
         }
     }
 
@@ -219,19 +223,21 @@ export class GramBotService implements OnModuleInit {
                 }
             });
             if(!task) return;
+            const group = await this.prisma.group.findUnique({where: {id: String(task.project.group_id)}});
+            const isBasicGroup = group?.type === 'chat';
             const result = await this.taskService.updateStatus(userId, -1, task.id);
             if(result?.message === "Status successfully changed")
             {
                 const emojiSended = await this.client.invoke(
                     new Api.messages.SendReaction({
-                        peer: `-100${task.project.group_id}`,
+                        peer: isBasicGroup ? `-${task.project.group_id}` : `-100${task.project.group_id}`,
                         msgId: Number(messageId),
                         reaction: [new Api.ReactionEmoji({emoticon:"👍"})]
                     })
                 );
                 if(emojiSended && !byEmoji)
                 {
-                    await this.removeMessage(task.project.group_id, doneMessageId)
+                    await this.removeMessage(task.project.group_id, doneMessageId, isBasicGroup)
                 }
             }
     
@@ -241,14 +247,17 @@ export class GramBotService implements OnModuleInit {
         }
     }
 
-    private async createTask(chatId: any, messageId: number, userId: number, topic: {title?: string, id: number, name?: string, topic_id?: number}, doneMessageId: number)
+    private async createTask(groupId: number, isBasicGroup: boolean, messageId: number, userId: number, topic: {title?: string, id: number, name?: string, topic_id?: number}, doneMessageId: number)
     {
         try {
-            const message: any = await this.client.getMessages(chatId, {ids: messageId, limit: 1});
+            const message: any = await this.client.getMessages(
+                isBasicGroup ? new Api.InputPeerChat({chatId: bigInt(groupId)}) : groupId,
+                {ids: messageId, limit: 1}
+            );
 
             if(message.length === 1 && message[0] === undefined)
             {
-                await this.sendMessage(chatId, "Bot is not admin, Please check admin permissions", messageId);
+                await this.sendMessage(isBasicGroup ? new Api.InputPeerChat({chatId: bigInt(groupId)}) : groupId, "Bot is not admin, Please check admin permissions", messageId);
                 return
             }
 
@@ -263,7 +272,7 @@ export class GramBotService implements OnModuleInit {
 
             const task = await this.taskService.init({
                 topic_id: String(topic.topic_id ? topic.topic_id : topic.id),
-                group_id: String(chatId.channelId),
+                group_id: String(groupId),
                 user_id: String(userId),
                 topic_title: topic.title ? topic.title : topic.name,
                 message_id: Number(messageId),
@@ -275,12 +284,12 @@ export class GramBotService implements OnModuleInit {
             await Promise.all([
                 this.client.invoke(
                     new Api.messages.SendReaction({
-                        peer: `-100${task.project.group_id}`,
+                        peer: isBasicGroup ? `-${groupId}` : `-100${groupId}`,
                         msgId: Number(messageId),
                         reaction: [new Api.ReactionEmoji({emoticon:"🤝"})]
                     })
                 ),
-                doneMessageId && this.removeMessage(task.project.group_id, doneMessageId),
+                doneMessageId && this.removeMessage(String(groupId), doneMessageId, isBasicGroup),
                 this.tag.connectTask(task.id, tags)
             ]);
             
@@ -305,22 +314,51 @@ export class GramBotService implements OnModuleInit {
         }
     }
 
-    private async getChannel(id: number){
+    private async getChannel(id: number, isBasicGroup = false){
         try {
             if(!id) return;
+            if (isBasicGroup) {
+                // legacy basic group: channels.* methods don't apply, use messages.GetFullChat
+                const result: any = await this.client.invoke(
+                    new Api.messages.GetFullChat({ chatId: bigInt(id) })
+                );
+                const chat = result?.chats?.find((c: any) => c.id === id) ?? result?.chats?.[0];
+                if (chat) await this.groupService.init({id: chat.id, name: chat.title, type: 'chat'});
+
+                // sync members into GroupUser — the mini app's project list and
+                // task access checks (isGroupUser) depend on these rows
+                const users: any[] = result?.users ?? [];
+                const botUsers: number[] = [];
+                for (const user of users) {
+                    if (!user.bot) {
+                        const checkUser = await this.userService.init({
+                            id: user.id,
+                            first_name: user.firstName,
+                            language_code: user.langCode,
+                            username: user.username,
+                        });
+                        if (checkUser) botUsers.push(user.id);
+                    }
+                }
+                if (botUsers.length > 0) {
+                    await this.userService.checkUserFromGroup(String(id), users);
+                    await this.groupService.checkUsers(botUsers, id, result?.full_chat?.participants?.participants ?? []);
+                }
+                return true;
+            }
             const result: any = await this.client.invoke(
                 new Api.channels.GetChannels({
                     id: [id],
                 })
-            ); 
-              
+            );
+
             if(result?.chats.length)
             {
                 const checkGroup = result.chats[0];
-                await this.groupService.init({id: checkGroup.id, name: checkGroup.title});
+                await this.groupService.init({id: checkGroup.id, name: checkGroup.title, type: 'channel'});
                 await this.groupUser(id, checkGroup.accessHash);
             }
-            
+
         } catch (error) {
             console.log("Get getChannel error ", error);
         }
@@ -371,8 +409,12 @@ export class GramBotService implements OnModuleInit {
         }
     }
 
-    private async getChannelTopics(channelId: number, messageId: number)
+    private async getChannelTopics(channelId: number, messageId: number, isBasicGroup = false)
     {
+        // basic groups can't have topics: the whole group is a single "General" project
+        if (isBasicGroup) {
+            return await this.projectService.init({groupId: channelId, id: 1, name: "General"});
+        }
         try {
             const result: any = await this.client.invoke(
                 new Api.channels.GetMessages({
@@ -424,9 +466,14 @@ export class GramBotService implements OnModuleInit {
         await this.notificationService.sendStartAppButton(userId);
     }
 
-    private async removeMessage(channel: string, messageId: number)
+    private async removeMessage(channel: string, messageId: number, isBasicGroup = false)
     {
         try {
+            if (isBasicGroup) {
+                // Telegram gives bots no admin rights in legacy basic groups:
+                // deleting OTHER users' messages is impossible there. Skip silently.
+                return;
+            }
             return await this.client.invoke(
                 new Api.channels.DeleteMessages({
                   channel: channel,
@@ -517,12 +564,12 @@ export class GramBotService implements OnModuleInit {
         }
     }
 
-    private async pinPermission(channelId: number, messageId: number)
+    private async pinPermission(channelId: number, messageId: number, isBasicGroup = false)
     {
         try {
             await this.client.invoke(
                 new Api.messages.UpdatePinnedMessage({
-                  peer: Number(channelId),
+                  peer: isBasicGroup ? new Api.InputPeerChat({chatId: bigInt(Number(channelId))}) : Number(channelId),
                   id: Number(messageId),
                   unpin: false,
                   pmOneside: true,

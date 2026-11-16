@@ -137,7 +137,7 @@ export class NotificationService {
             reply_markup?: any
         }
         const data: SendData = {
-            chat_id: `-100${change.task.project.group_id}`,
+            chat_id: await this.tgChatId(change.task.project.group_id),
             text: message,
             parse_mode: 'html',
         };
@@ -181,20 +181,27 @@ export class NotificationService {
     {
         const lang: string = 'en';
         const data: any = {
-            chat_id: `-100${Number(chat_id)}`,
+            chat_id: await this.tgChatId(chat_id),
             text: '',
             parse_mode: 'html',
             reply_markup: this.inlineKeyboard(this.webAppLink(), languages[lang].dashboard)
         };
         
-        if(topic && topic.id) { 
+        if(topic && (topic.id || topic.topic_id)) {
+            // `topic` is either a real MTProto forum topic ({id, title}) or, in groups
+            // WITHOUT topics, the fallback "General" Project DB record ({id, topic_id, name})
+            // returned by getChannelTopics. Only real forum topics may be used as
+            // message_thread_id — a plain group has no threads and Telegram rejects them.
+            const isRealTopic = topic.topic_id === undefined;
+            const lookupTopicId = isRealTopic ? topic.id : topic.topic_id;
+
             let project = await this.prisma.project.findFirst({
                 where: {
                     group_id: String(chat_id),
-                    topic_id: String(topic.id)
+                    topic_id: String(lookupTopicId)
                 }
             });
-            
+
             if(!project)
             {
                 project = await this.prisma.project.findFirst({
@@ -203,8 +210,8 @@ export class NotificationService {
                         topic_id: '1'
                     }
                 });
-            }else{
-                data.message_thread_id = topic.id 
+            }else if(isRealTopic){
+                data.message_thread_id = topic.id
             }
             if(project && type === 'commands') data.reply_markup = this.inlineKeyboard(this.webAppLink(`projects_${project.id}`), languages[lang].open_app)
         }
@@ -233,7 +240,7 @@ export class NotificationService {
     async pinnerMessage(chat_id: number)
     {
         const data: any = {
-            chat_id: `-100${Number(chat_id)}`,
+            chat_id: await this.tgChatId(chat_id),
             text: "<b>Plan Jet 🚀</b>",
             parse_mode: 'html',
             reply_markup: {
@@ -289,6 +296,16 @@ export class NotificationService {
                 }]
             ]
         };
+    }
+
+    /**
+     * Bot API chat id for a group: supergroups/forums use the -100 prefix,
+     * legacy basic groups (Group.type = "chat") use a plain -<id>.
+     */
+    private async tgChatId(group_id: string | number): Promise<string>
+    {
+        const group = await this.prisma.group.findUnique({where: {id: String(group_id)}});
+        return group?.type === 'chat' ? `-${group_id}` : `-100${group_id}`;
     }
 
     /**

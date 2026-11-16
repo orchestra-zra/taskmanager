@@ -17,23 +17,32 @@ export class GroupService {
 
     async init(data: {
         id: number,
-        name: string
+        name: string,
+        type?: string
     } ){
-        const {id, name} = data;
+        const {id, name, type} = data;
         const check = await this.prisma.group.findUnique({
             where: {
                 id: String(id)
             }
         });
 
-        if (!check) 
+        if (!check)
         {
             return await this.prisma.group.create({
                 data: {
                     id: String(id),
                     name: name,
+                    type: type || 'channel',
                 }
-            });  
+            });
+        }
+
+        if (type && check.type !== type) {
+            return await this.prisma.group.update({
+                where: { id: String(id) },
+                data: { type },
+            });
         }
 
         return check
