@@ -267,7 +267,13 @@ export class TaskService {
             {
                 status = await this.prisma.status.findFirst({
                     where: {
-                        name: "Completed",
+                        name: {
+                            in: [
+                                defaultStatuses.en.completed,
+                                defaultStatuses.ru.completed,
+                                defaultStatuses.uz.completed,
+                            ],
+                        },
                         project_id: Number(task.project_id)
                     }
                 });

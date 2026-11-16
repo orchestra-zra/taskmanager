@@ -142,7 +142,7 @@ export class NotificationService {
             parse_mode: 'html',
         };
 
-        const inlineKeyboard = this.inlineKeyboard(String(process.env.TELEGRAM_WEB_APP_URL) + `?startapp=tasks_${change.task_id}`, languages.en.open_task);
+        const inlineKeyboard = this.inlineKeyboard(this.webAppLink(`tasks_${change.task_id}`), languages.en.open_task);
 
         if (topic && topic !== 1) data.message_thread_id = topic;
         if (inlineKeyboard) data.reply_markup = inlineKeyboard;
@@ -184,7 +184,7 @@ export class NotificationService {
             chat_id: `-100${Number(chat_id)}`,
             text: '',
             parse_mode: 'html',
-            reply_markup: this.inlineKeyboard(String(process.env.TELEGRAM_WEB_APP_URL), languages[lang].dashboard)
+            reply_markup: this.inlineKeyboard(this.webAppLink(), languages[lang].dashboard)
         };
         
         if(topic && topic.id) { 
@@ -206,7 +206,7 @@ export class NotificationService {
             }else{
                 data.message_thread_id = topic.id 
             }
-            if(project && type === 'commands') data.reply_markup = this.inlineKeyboard(String(process.env.TELEGRAM_WEB_APP_URL) + `?startapp=projects_${project.id}`, languages[lang].open_app)
+            if(project && type === 'commands') data.reply_markup = this.inlineKeyboard(this.webAppLink(`projects_${project.id}`), languages[lang].open_app)
         }
 
         try {
@@ -241,7 +241,7 @@ export class NotificationService {
                     [
                         {
                             text: "Open",
-                            url: String(process.env.TELEGRAM_WEB_APP_URL)
+                            url: this.webAppLink()
                         }
                     ]
                 ]
@@ -256,7 +256,7 @@ export class NotificationService {
 
     async sendStartAppButton(userId: number)
     {
-        const webAppUrl = process.env.TELEGRAM_WEB_APP_URL || 'https://t.me/trello_zra_bot/trello_app';
+        const webAppUrl = this.webAppLink();
         const data: any = {
             chat_id: Number(userId),
             text: "<b>Plan Jet 🚀</b>",
@@ -289,6 +289,22 @@ export class NotificationService {
                 }]
             ]
         };
+    }
+
+    /**
+     * Builds the mini-app button link from env (no hardcoded bot names).
+     * For t.me links a `startapp` param is required, otherwise Telegram just
+     * opens the bot chat instead of the Mini App:
+     *   https://t.me/<bot>?startapp            -> main mini app
+     *   https://t.me/<bot>?startapp=tasks_5    -> mini app with deep link
+     */
+    private webAppLink(startParam?: string): string
+    {
+        const base = process.env.TELEGRAM_WEB_APP_URL
+            || (process.env.BOT_NAME ? `https://t.me/${process.env.BOT_NAME}` : '');
+        if (!base) return base;
+        const sep = base.includes('?') ? '&' : '?';
+        return startParam ? `${base}${sep}startapp=${startParam}` : `${base}${sep}startapp`;
     }
 
     async sendToParticipant(change_id: number, user_id: string)
@@ -343,7 +359,7 @@ ${oldValueStr}${priorityStr}`}`;
                 chat_id: user_id,
                 text,
                 parse_mode: 'html',
-                reply_markup: this.inlineKeyboard(String(process.env.TELEGRAM_WEB_APP_URL) + `?startapp=tasks_${notification.change.task_id}`, userLanguage.open_task)
+                reply_markup: this.inlineKeyboard(this.webAppLink(`tasks_${notification.change.task_id}`), userLanguage.open_task)
             });
         } catch (error) {
             console.log(error.message);
@@ -554,7 +570,7 @@ Participants: ${list}`;
                                 text: sendedText,
                                 parse_mode: 'html',
                                 reply_markup: this.inlineKeyboard(
-                                    `${process.env.TELEGRAM_WEB_APP_URL}?startapp=tasks_${task.id}`,
+                                    this.webAppLink(`tasks_${task.id}`),
                                     this.getLang(langCode).open_task
                                 )
                             });

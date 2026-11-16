@@ -29,6 +29,10 @@ pids
 *.seed
 *.pid.lock
 
+# Local SQLite dev database (no-Docker setup)
+*.db
+*.db-journal
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
