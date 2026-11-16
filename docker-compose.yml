@@ -17,5 +17,39 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: planjet-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-planjet}?schema=public
+      APP_PORT: ${APP_PORT:-8000}
+      ENABLE_TEST_MODE: ${ENABLE_TEST_MODE:-false}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_TEST_MODE: ${VITE_TEST_MODE:-false}
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-/api}
+        VITE_BACKEND_URL_LOCAL: ${VITE_BACKEND_URL_LOCAL:-/api}
+        VITE_TELEGRAM_WEB_APP_URL: ${VITE_TELEGRAM_WEB_APP_URL:-https://t.me}
+    container_name: planjet-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+
 volumes:
   planjet_pgdata:

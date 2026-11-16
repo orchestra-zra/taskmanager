@@ -29,6 +29,14 @@ export class GramBotService implements OnModuleInit {
     private readonly apiId: number = parseInt(process.env.TELEGRAM_API_ID, 10);
     private readonly apiHash: string = process.env.TELEGRAM_API_HASH;
     private readonly botToken: string = process.env.TELEGRAM_BOT_TOKEN;
+    private readonly botId: number = Number(
+        process.env.TELEGRAM_BOT_ID || (process.env.TELEGRAM_BOT_TOKEN?.split(':')[0] ?? 0),
+    );
+    private readonly botName: string = (
+        process.env.BOT_NAME ||
+        process.env.TELEGRAM_BOT_NAME ||
+        ''
+    ).replace(/^@/, '').trim().toLowerCase();
     private readonly client?: TelegramClient;
     private readonly logger = new Logger(GramBotService.name);
 
@@ -106,13 +114,23 @@ export class GramBotService implements OnModuleInit {
         }
     }
 
+    private normalizeBotCommand(text?: string): string | undefined {
+        if (!text || !text.startsWith('/') || !this.botName) {
+            return text;
+        }
+        const suffix = `@${this.botName}`;
+        return text.toLowerCase().endsWith(suffix)
+            ? text.slice(0, -suffix.length)
+            : text;
+    }
+
     private async handleDoneReaction(event)
     {
         if(event)
         {
             if(event.className === "UpdateBotMessageReaction" && event.newReactions.length &&  event.newReactions[0].emoticon === '👍'){
                 this.doneTask(event.msgId, Number(event.actor.userId), -1, true)
-            }else if(event.className === "UpdateChannelParticipant" && Number(event.userId) === 7273527869)
+            }else if(event.className === "UpdateChannelParticipant" && this.botId > 0 && Number(event.userId) === this.botId)
             {
                 console.log("event");
                 console.log(event);
@@ -136,7 +154,7 @@ export class GramBotService implements OnModuleInit {
             if(initGroup) topic = await this.getChannelTopics(message.peerId.channelId, messageId);
         }
 
-        switch (messageText)
+        switch (this.normalizeBotCommand(messageText))
         {
             case "Plan Jet 🚀":
                 await this.pinPermission(chatId.channelId, messageId)
@@ -146,18 +164,15 @@ export class GramBotService implements OnModuleInit {
                     this.sendPermissionImage(message.peerId.userId)
                 ]);
                 break;
-            case "/dashboard@plan_jet_bot":
             case "/dashboard": 
                 await this.notificationService.addBotToChannel(chatId.channelId, 'dashboard', topic);
                 await this.removeMessage(chatId.channelId, messageId);
                 break;
-            case "/commands@plan_jet_bot":
             case "/commands": 
                 await this.notificationService.addBotToChannel(chatId.channelId, 'commands', topic);
                 await this.removeMessage(chatId.channelId, messageId);
                 break;
             
-            case "/add@plan_jet_bot":
             case "/add":
                 if(message.replyTo && topic)
                 {
@@ -166,7 +181,6 @@ export class GramBotService implements OnModuleInit {
                     await this.sendMessage(chatId, "Task not found", messageId);
                 }
                 break;
-            case "/done@plan_jet_bot":
             case "/done":
                 if (message.replyTo && topic) {
                     await this.doneTask(message.replyTo.replyToMsgId, message.fromId.userId, messageId);

@@ -7,8 +7,8 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {cors:true});
   app.useGlobalGuards(new AuthGuard());
 
-  await app.listen(process.env.APP_PORT);
-  app.enableCors();
-  console.log("Project is running... PORT: " + process.env.APP_PORT)
+  const port = process.env.APP_PORT || 8000;
+  await app.listen(port);
+  console.log("Project is running... PORT: " + port);
 }
 bootstrap();
