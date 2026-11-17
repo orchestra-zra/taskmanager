@@ -1,6 +1,6 @@
 import { FaRegComment } from "react-icons/fa6";
 import { Avatar } from "../components/mini/Avatar";
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import { dateTimeConverter } from "../common/dateTimeConverter";
 import { AvatarUser } from "../components/mini/AvatarUser";
 import { Link, useParams } from "react-router-dom";
@@ -29,6 +29,7 @@ import clsx from "clsx";
 import {
   useArchiveTask,
   useDeleteTask,
+  useUpdateDeadline,
   useUpdateParticipants,
   useUpdatePriority,
   useUpdateStatus,
@@ -198,6 +199,13 @@ const Task = () => {
     updatePriorityMutation.mutate(newPriority);
   };
 
+  const deadlineInputRef = useRef<HTMLInputElement>(null);
+  const updateDeadlineMutation = useUpdateDeadline(Number(task?.id));
+
+  const handleDeadlineUpdate = (newDeadline: string) => {
+    updateDeadlineMutation.mutate(newDeadline || null);
+  };
+
   const deleteTask = async () => {
     if (deleteTaskMutation.isPending) return;
     deleteTaskMutation.mutate(Number(id));
@@ -358,23 +366,50 @@ const Task = () => {
               <ArrowRight />
             </div>
           </div>
-          {
-            <div className="flex justify-between items-center p-2 h-[44px]">
-              <div className="flex justify-between items-center gap-4">
-                <div className="text-gray-400">
-                  <Calendar />
-                </div>
-                <p className="text-black font-normal text-base font-sfpro">
-                  {t("deadline")}
-                </p>
+          <div
+            className="relative flex justify-between items-center p-2 h-[44px] cursor-pointer"
+            onClick={(e) => {
+              if (e.target !== deadlineInputRef.current) {
+                try {
+                  deadlineInputRef.current?.showPicker?.();
+                } catch {
+                  // Fallback for browsers without showPicker
+                }
+              }
+            }}
+          >
+            <div className="flex justify-between items-center gap-4">
+              <div className="text-gray-400">
+                <Calendar />
               </div>
+              <p className="text-black font-normal text-base font-sfpro">
+                {t("deadline")}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
               <p className="text-black font-medium text-[15px] font-sfpro">
                 {task.deadline
                   ? dateTimeConverter.convertDay(task.deadline)
-                  : "Not selected"}
+                  : t("choose_date", "Not selected")}
               </p>
+              <div className="text-gray-400">
+                <ArrowRight />
+              </div>
             </div>
-          }
+            <input
+              ref={deadlineInputRef}
+              type="date"
+              defaultValue={
+                task.deadline
+                  ? new Date(task.deadline).toISOString().split("T")[0]
+                  : ""
+              }
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={(e) => {
+                handleDeadlineUpdate(e.target.value);
+              }}
+            />
+          </div>
 
           {/* StoryPoint */}
 

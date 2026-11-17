@@ -115,6 +115,18 @@ export class TaskController {
     return response.json(await this.taskService.updatePriority(user.telegram_id, priority, id))
   }
 
+  @Put(":id/deadline")
+  @UseGuards(UserGuard)
+  async updateDeadline(
+    @Req() req,
+    @Res() response: Response,
+    @Param("id") id: number,
+    @Body("deadline") deadline: string,    
+  ){
+    const {user} = req;
+    return response.json(await this.taskService.updateDeadline(user.telegram_id, deadline, id))
+  }
+
 
   @Delete(":id")
   @UseGuards(UserGuard)
