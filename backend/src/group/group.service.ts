@@ -311,8 +311,13 @@ export class GroupService {
                     include: {
                         tasks: {
                             where: {
+                                is_archive: false,
+                                is_backlog: false,
                                 status: {
-                                    name: "To do"
+                                    OR: [
+                                        { order: 1 },
+                                        { name: { in: ["To do", "К выполнению", "Qilish kerak", "Bajarish kerak"] } }
+                                    ]
                                 }
                             },
                             include: {

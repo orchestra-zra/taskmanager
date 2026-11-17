@@ -140,13 +140,21 @@ export class StatusService {
         }
     }
 
-    async deleteStatus(id: number)
+    async deleteStatus(id: number, userId?: string)
     {
         const check = await this.prisma.status.findUnique({
             where: {
                 id: Number(id)
             },
             include: {
+                project: {
+                    include: {
+                        project_users: userId ? {
+                            where: { user_id: String(userId) },
+                            include: { role: true }
+                        } : undefined
+                    }
+                },
                 tasks: {
                     include: {
                         taskChange: true,
@@ -158,6 +166,22 @@ export class StatusService {
         });
 
         if(!check) throw new NotFoundException("Status not found");
+
+        if (userId) {
+            const isGroupMember = await this.prisma.groupUser.findFirst({
+                where: {
+                    group_id: check.project.group_id,
+                    user_id: String(userId)
+                }
+            });
+            if (!isGroupMember) throw new HttpException("Permission denied", 403);
+
+            const projectUser = check.project?.project_users?.[0];
+            const isAdmin = projectUser?.role?.name === 'admin';
+            if (projectUser && !isAdmin) {
+                throw new HttpException("Permission denied: admin role required", 403);
+            }
+        }
 
         if (check.tasks.length > 0) {
             for (const task of check.tasks) {

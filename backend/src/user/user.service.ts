@@ -81,6 +81,46 @@ export class UserService {
     async tasks(user_id: string, status: string, project_id?: number)
     {
         if(status === undefined) status = 'To do';
+
+        let statusFilter: any;
+        if (status === 'To do') {
+            statusFilter = {
+                OR: [
+                    { order: 1 },
+                    { name: { in: ['To do', 'К выполнению', 'Qilish kerak', 'Bajarish kerak'] } }
+                ]
+            };
+        } else if (status === 'In Progress') {
+            statusFilter = {
+                OR: [
+                    { order: 2 },
+                    { name: { in: ['In Progress', 'В процессе', 'Bajarilmoqda'] } }
+                ]
+            };
+        } else if (status === 'Testing') {
+            statusFilter = {
+                OR: [
+                    { order: 3 },
+                    { name: { in: ['Testing', 'На проверке', 'Sinov'] } }
+                ]
+            };
+        } else if (status === 'Completed') {
+            statusFilter = {
+                OR: [
+                    { order: 4 },
+                    { name: { in: ['Completed', 'Завершено', 'Tugallangan'] } }
+                ]
+            };
+        } else if (status === 'Cancelled') {
+            statusFilter = {
+                OR: [
+                    { order: 5 },
+                    { name: { in: ['Cancelled', 'Отменено', 'Bekor qilingan'] } }
+                ]
+            };
+        } else {
+            statusFilter = { name: status };
+        }
         
         const mainQuery: any = {
             taskUser: {
@@ -88,9 +128,9 @@ export class UserService {
                     user_id
                 }
             },
-            status: {
-                name: status
-            }
+            status: statusFilter,
+            is_archive: false,
+            is_backlog: false
         };
         
         if(project_id !== undefined && !isNaN(project_id)) mainQuery.project_id = Number(project_id);
@@ -113,7 +153,9 @@ export class UserService {
                 some: {
                     user_id
                 }
-            }
+            },
+            is_archive: false,
+            is_backlog: false
         }
         if(project_id) mainQuery.project_id = Number(project_id);
         const tasks = await this.prisma.task.findMany({
@@ -130,21 +172,16 @@ export class UserService {
 
         if(tasks.length)
         {
-            tasks.map((task) => {
-                if(task.status.name === 'To do')
-                {
+            tasks.forEach((task) => {
+                const sName = task.status?.name;
+                const order = task.status?.order;
+                if (order === 1 || ['To do', 'К выполнению', 'Qilish kerak', 'Bajarish kerak'].includes(sName)) {
                     todo.push(task);
-                }
-                else if(task.status.name === 'In Progress')
-                {
+                } else if (order === 2 || ['In Progress', 'В процессе', 'Bajarilmoqda'].includes(sName)) {
                     process.push(task);
-                }
-                else if(task.status.name === 'Testing')
-                {
+                } else if (order === 3 || ['Testing', 'На проверке', 'Sinov'].includes(sName)) {
                     test.push(task);
-                }
-                else if(task.status.name === 'Completed')
-                {
+                } else if (order === 4 || ['Completed', 'Завершено', 'Tugallangan'].includes(sName)) {
                     completed.push(task);
                 }
             });
@@ -183,11 +220,18 @@ export class UserService {
         }
         const tasks = await this.prisma.task.findMany({
             where: {
-                taskUser: {
-                    some: {
+                OR: [
+                    {
+                        taskUser: {
+                            some: {
+                                user_id
+                            }
+                        }
+                    },
+                    {
                         user_id
                     }
-                },
+                ],
                 taskChange: {
                     some: {
                         notification: {

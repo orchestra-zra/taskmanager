@@ -520,7 +520,7 @@ export class GramBotService implements OnModuleInit {
             });
     
             if (comment) {
-                await this.prisma.taskChange.create({
+                const change = await this.prisma.taskChange.create({
                     data: {
                         user_id: user_id_str,
                         task_id: taskId,
@@ -529,6 +529,9 @@ export class GramBotService implements OnModuleInit {
                         new_value: text
                     }
                 });
+                if (change) {
+                    await this.notificationService.notificationSender(change.id);
+                }
             }
         }
     }

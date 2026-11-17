@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { StatusService } from './status.service';
 import { Response} from 'express';
 import { UserGuard } from 'src/user/user.guard';
@@ -33,10 +33,12 @@ export class StatusController {
   @Delete(":id")
   @UseGuards(UserGuard)
   async deleteStatus(
+    @Req() req,
     @Param("id") id: number,
     @Res() response: Response
   ){
-    return response.json(await this.statusService.deleteStatus(id))
+    const { user } = req;
+    return response.json(await this.statusService.deleteStatus(id, user?.telegram_id))
   }
 
 }

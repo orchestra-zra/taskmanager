@@ -461,31 +461,37 @@ export class ProjectService {
             case "edit":
             case "archive":
             case "delete":
-                if (value) {
-                    const permissionArray: string[] = JSON.parse(project.projectNotificationPermissions);
-                    if (!permissionArray.includes(type)) {
-                        permissionArray.push(type);
-                    }
-                    data.projectNotificationPermissions = JSON.stringify(permissionArray);
-                
-                } else {
-                    const permissionArray: string[] = JSON.parse(project.projectNotificationPermissions);
-                    const updatedArray = permissionArray.filter(item => item !== type);
-                    data.projectNotificationPermissions = JSON.stringify(updatedArray);
+                let projPerms: string[] = [];
+                try {
+                    projPerms = project.projectNotificationPermissions ? JSON.parse(project.projectNotificationPermissions) : [];
+                } catch {
+                    projPerms = [];
                 }
+                if (value) {
+                    if (!projPerms.includes(type)) {
+                        projPerms.push(type);
+                    }
+                } else {
+                    projPerms = projPerms.filter(item => item !== type);
+                }
+                data.projectNotificationPermissions = JSON.stringify(projPerms);
                 break;
             case "todo":
             case "in_progress":
             case "testing":
             case "completed":
-                const permissionArray: string[] = JSON.parse(project.statusNotificationPermissions);
-                if (value) {
-                    if (!permissionArray.includes(type)) { permissionArray.push(type); }
-                    data.statusNotificationPermissions = JSON.stringify(permissionArray);
-                } else {
-                    const updatedArray = permissionArray.filter(item => item !== type);
-                    data.statusNotificationPermissions = JSON.stringify(updatedArray);
+                let statPerms: string[] = [];
+                try {
+                    statPerms = project.statusNotificationPermissions ? JSON.parse(project.statusNotificationPermissions) : [];
+                } catch {
+                    statPerms = [];
                 }
+                if (value) {
+                    if (!statPerms.includes(type)) { statPerms.push(type); }
+                } else {
+                    statPerms = statPerms.filter(item => item !== type);
+                }
+                data.statusNotificationPermissions = JSON.stringify(statPerms);
                 break;
         }
 

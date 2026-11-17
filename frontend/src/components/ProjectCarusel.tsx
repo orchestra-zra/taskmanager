@@ -12,6 +12,7 @@ import useGetStatuses from "../data/hooks/statuses";
 import clsx from "clsx";
 import TasksIcon from "../assets/icons/TaskIcon";
 import { UserInterface } from "../data/hooks/users/interface";
+import { getStatusLabel } from "../common/statusHelper";
 
 export interface Params {
   user_ids?: string;
@@ -170,13 +171,6 @@ export const ProjectCarusel = () => {
     if (element) element.scrollIntoView({ behavior: "smooth" });
   };
 
-  const statusess: { [key: string]: string } = {
-    "To do": "to_do",
-    "In Progress": "in_progress",
-    Testing: "testing",
-    Completed: "completed",
-  };
-
   if (isLoading) {
     return <Loader />;
   }
@@ -201,7 +195,7 @@ export const ProjectCarusel = () => {
       >
         {state.statuses &&
           Number(state.statuses?.length) > 0 &&
-          state.statuses.slice(0, 4).map((status: IStatus) => (
+          state.statuses.map((status: IStatus) => (
             <div
               id={"status_" + status.id}
               key={status.id}
@@ -216,7 +210,7 @@ export const ProjectCarusel = () => {
                       : "text-customBlack"
                   } font-bold font-sfpro`}
                 >
-                  {t(statusess[status.name])}
+                  {getStatusLabel(status.name)}
                 </p>
                 <p
                   className={clsx(

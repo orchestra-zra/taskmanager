@@ -93,30 +93,39 @@ export class NotificationService {
                 break;
 
             case "status":
+                let shouldSendStatus = false;
                 switch (status) {
                     case defaultStatuses.en.todo:
                     case defaultStatuses.ru.todo:
                     case defaultStatuses.uz.todo:
-                        if(statusPermissions.includes("todo")) message = await this.notificationStatus({author, users: userNames, project, changed_user, text, status, user_name});
+                        shouldSendStatus = statusPermissions.includes("todo");
                         break;
                     case defaultStatuses.en.progress:
                     case defaultStatuses.ru.progress:
                     case defaultStatuses.uz.progress:
-                        if(statusPermissions.includes("in_progress")) message = await this.notificationStatus({author, users: userNames, project, changed_user, text, status, user_name});
+                        shouldSendStatus = statusPermissions.includes("in_progress");
                         break;
                     case defaultStatuses.en.test:
                     case defaultStatuses.ru.test:
                     case defaultStatuses.uz.test:
-                        if(statusPermissions.includes("testing")) message = await this.notificationStatus({author, users: userNames, project, changed_user, text, status, user_name});
+                        shouldSendStatus = statusPermissions.includes("testing");
                         break;
                     case defaultStatuses.en.completed:
                     case defaultStatuses.ru.completed:
                     case defaultStatuses.uz.completed:
-                        if(statusPermissions.includes("completed")) message = await this.notificationStatus({author, users: userNames, project, changed_user, text, status, user_name});
+                        shouldSendStatus = statusPermissions.includes("completed");
+                        break;
+                    case defaultStatuses.en.cancelled:
+                    case defaultStatuses.ru.cancelled:
+                    case defaultStatuses.uz.cancelled:
+                        shouldSendStatus = statusPermissions.includes("cancelled");
                         break;
                     default:
-                        message = await this.notificationStatus({author, users: userNames, project, changed_user, text, status, user_name});
+                        shouldSendStatus = statusPermissions.length > 0;
                         break;
+                }
+                if (shouldSendStatus) {
+                    message = await this.notificationStatus({author, users: userNames, project, changed_user, text, status, user_name});
                 }
                 break;
         
@@ -162,11 +171,24 @@ export class NotificationService {
         if (topic && topic !== 1) data.message_thread_id = topic;
         if (inlineKeyboard) data.reply_markup = inlineKeyboard;
 
+        // Collect all distinct targets: assignees and creator, excluding the actor
+        const candidateUsers = [
+            ...(change.task.user ? [change.task.user] : []),
+            ...change.task.taskUser.map(u => u.user)
+        ];
+        const targetUsersMap = new Map<string, any>();
+        for (const u of candidateUsers) {
+            if (u && String(u.telegram_id) !== String(change.user_id)) {
+                targetUsersMap.set(String(u.telegram_id), u);
+            }
+        }
+        const targetUsers = Array.from(targetUsersMap.values());
+
         try {
             if (data.text)
             {
                 await axios.post(this.url, data);
-                if(users.length)
+                if(targetUsers.length)
                 {
                     const dmBaseData: SendData = {
                         chat_id: data.chat_id,
@@ -174,17 +196,17 @@ export class NotificationService {
                         parse_mode: data.parse_mode,
                         ...(data.reply_markup ? { reply_markup: data.reply_markup } : {}),
                     };
-                    const messages = users.map((user) => ({...dmBaseData, chat_id: user.telegram_id}));
-                    await Promise.all(messages.map((msg) => axios.post(this.url, msg)))
+                    const messages = targetUsers.map((user) => ({...dmBaseData, chat_id: user.telegram_id}));
+                    await Promise.all(messages.map((msg) => axios.post(this.url, msg).catch(e => console.log('DM send error', e?.message))));
                     await this.prisma.notification.createMany({
-                        data: users.map((u) => (
+                        data: targetUsers.map((u) => (
                             {
                                 change_id: id, 
                                 user_id: u.telegram_id, 
                                 is_viewed: false
                             }
                         ))
-                    })
+                    });
                 }
             }
         } catch (error) {
@@ -405,8 +427,16 @@ ${oldValueStr}${priorityStr}`}`;
         let { status } = params;
         let list: string = author
         
-        if(!this.statuses.includes(status)) status = this.statuses[0];
-        if(status === 'Completed') status = 'Completed✅';
+        const isCompleted = [
+            defaultStatuses.en.completed,
+            defaultStatuses.ru.completed,
+            defaultStatuses.uz.completed,
+            'Completed',
+            'Завершено',
+            'Tugallangan',
+            'Bajarilgan'
+        ].includes(status);
+        if (isCompleted && !status.includes('✅')) status = `${status}✅`;
         if(users.length) list = users.join(", ");
 
         return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : changed_user}

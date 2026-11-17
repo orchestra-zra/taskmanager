@@ -40,6 +40,7 @@ import WebApp from "@twa-dev/sdk";
 import { UserInterface } from "../data/hooks/users/interface";
 import { IUserFromGroup } from "../components/TopProjectBar";
 import ErrorState from "../components/ErrorState";
+import { getStatusLabel, getStatusColorClasses } from "../common/statusHelper";
 
 const getTask = async (id: number) => {
   return await fetchData("/task/show/" + id, {});
@@ -232,13 +233,6 @@ const Task = () => {
   const capitalizeFirstChar = (str: string) => {
     if (!str) return str;
     return str.charAt(0).toUpperCase() + str.slice(1);
-  };
-
-  const statusess: { [key: string]: string } = {
-    "To do": "to_do",
-    "In Progress": "in_progress",
-    Testing: "testing",
-    Completed: "completed",
   };
 
   if (!task) return <ErrorState onRetry={() => refetch()} />;
@@ -460,14 +454,10 @@ const Task = () => {
               onClick={() => setState({ selectStatus: task.status.id })}
               className={clsx(
                 "text-customBlackLight h-7 text-[15px] flex items-center gap-[4px] font-sans font-normal rounded-[8px] px-[12px] py-[4px] bg-[#F2F2F7]",
-                {
-                  "bg-customBlueLight": task.status?.name === "In Progress",
-                  "bg-customRedLight": task.status?.name === "Testing",
-                  "bg-customGreen": task.status?.name === "Completed",
-                },
+                getStatusColorClasses(task.status?.name, task.status?.order),
               )}
             >
-              {t(statusess[task.status?.name])}
+              {getStatusLabel(task.status?.name)}
               <ArrowRight />
             </div>
           </div>

@@ -15,6 +15,7 @@ import { Loader } from "../components/mini/Loader";
 import WebApp from "@twa-dev/sdk";
 import { UserInterface } from "../data/hooks/users/interface";
 import ErrorState from "../components/ErrorState";
+import { getStatusLabel } from "../common/statusHelper";
 
 interface IMyTasksState {
   statuses: IStatus[];
@@ -194,13 +195,6 @@ const Mytasks = () => {
     statusClicker(status);
   };
 
-  const statusess: { [key: string]: string } = {
-    "To do": "to_do",
-    "In Progress": "in_progress",
-    Testing: "testing",
-    Completed: "completed",
-  };
-
   return (
     <>
       <div className='h-[72px]'></div>
@@ -255,7 +249,7 @@ const Mytasks = () => {
                         : "text-customBlack"
                     } font-bold font-sfpro`}
                   >
-                    {t(statusess[status.name])}
+                    {getStatusLabel(status.name)}
                   </p>
                   <p
                     className={clsx(

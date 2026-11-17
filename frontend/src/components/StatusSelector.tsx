@@ -1,5 +1,5 @@
-import { t } from "i18next";
 import { IStatus } from "./ProjectCarusel";
+import { getStatusLabel } from "../common/statusHelper";
 
 interface IProps {
   selectStatus: number | string | null;
@@ -9,17 +9,7 @@ interface IProps {
 }
 
 const StatusSelector = (props: IProps) => {
-  const { selectStatus, setSelectStatus, handleStatusUpdate } = props;
-  let {statuses} = props;
-
-  const statusess: { [key: string]: string } = {
-    "To do": "to_do",
-    "In Progress": "in_progress",
-    "Testing": "testing",
-    "Completed": "completed",
-  };
-
-  statuses = statuses.filter((_s: IStatus, ind: number) => ind !== 4)
+  const { selectStatus, setSelectStatus, handleStatusUpdate, statuses } = props;
 
   return (
     <>
@@ -52,7 +42,7 @@ const StatusSelector = (props: IProps) => {
                     status.id === selectStatus ? "text-gradient-blue" : ""
                   }
                 >
-                  {t(statusess[status.name])}
+                  {getStatusLabel(status.name)}
                 </div>
               </div>
               <div

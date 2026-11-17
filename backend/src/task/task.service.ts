@@ -52,20 +52,46 @@ export class TaskService {
             is_backlog
         } = params;
 
-        const check = await this.prisma.task.findFirst({
-            where: {
-                project_id,
-                user_id,
-                name,
-            },
-            include: {
-                status: true,
-                user: true,
-                project: { include: { group: true } }
-            }
+        const project = await this.prisma.project.findUnique({
+            where: { id: Number(project_id) }
         });
+        if (!project) throw new NotFoundException("Project not found");
 
-        if(check) return check;
+        if (project.group_id && !(await this.userService.isGroupUser(project.group_id, String(user_id)))) {
+            throw new HttpException("Permission denied", 403);
+        }
+
+        if (message_id) {
+            const checkByMessage = await this.prisma.task.findFirst({
+                where: {
+                    project_id,
+                    message_id: Number(message_id)
+                },
+                include: {
+                    status: true,
+                    user: true,
+                    project: { include: { group: true } }
+                }
+            });
+            if (checkByMessage) return checkByMessage;
+        } else {
+            const recentDuplicate = await this.prisma.task.findFirst({
+                where: {
+                    project_id,
+                    user_id,
+                    name,
+                    created_at: {
+                        gte: new Date(Date.now() - 5000)
+                    }
+                },
+                include: {
+                    status: true,
+                    user: true,
+                    project: { include: { group: true } }
+                }
+            });
+            if (recentDuplicate) return recentDuplicate;
+        }
 
         let statuses: any = await this.prisma.status.findMany({
             where: { project_id }
@@ -279,8 +305,11 @@ export class TaskService {
                 });
                 if (status) statusID = status.id;
             }else{
-                status = await this.prisma.status.findUnique({
-                    where: { id: statusID },
+                status = await this.prisma.status.findFirst({
+                    where: {
+                        id: statusID,
+                        project_id: Number(task.project_id)
+                    },
                 });
             }
         
@@ -639,11 +668,37 @@ export class TaskService {
         await this.assertTaskAccess(telegram_id, Number(id));
 
         try {
-            if(participant.length > 0)
-            {
-                let old_value = "";
-                let new_value = "";
-                const oldUsers = await this.prisma.taskUser.findMany({
+            let old_value = "";
+            let new_value = "";
+            const oldUsers = await this.prisma.taskUser.findMany({
+                where: {
+                    task_id: Number(id),
+                },
+                include: {
+                    user: true
+                }
+            });
+            
+            if(oldUsers.length){
+                oldUsers.forEach(oldUser => {
+                    old_value += oldUser.user.name + ", ";
+                });
+                await this.prisma.taskUser.deleteMany({
+                    where: {
+                        task_id: Number(id),
+                    }
+                });
+            }
+      
+            if (participant && participant.length > 0) {
+                await this.prisma.taskUser.createMany({
+                    data: participant.map((participant_item) => ({
+                        task_id: Number(id),
+                        user_id: String(participant_item)
+                    }))
+                });
+
+                const newUsers = await this.prisma.taskUser.findMany({
                     where: {
                         task_id: Number(id),
                     },
@@ -651,57 +706,29 @@ export class TaskService {
                         user: true
                     }
                 });
-                
-                if(oldUsers.length){
-                    oldUsers.map(oldUser => {
-                        old_value += oldUser.user.name + ", "
-                    });
-                    await this.prisma.taskUser.deleteMany({
-                        where: {
-                            task_id: Number(id),
-                        }
-                    });
-                }
-          
-                const checkCreate = await this.prisma.taskUser.createMany({
-                    data: participant.map((participant_item) => ({
-                        task_id: Number(id),
-                        user_id: String(participant_item)
-                    }))
-                });
-
-                if(checkCreate)
+                if(newUsers.length)
                 {
-                    const newUsers = await this.prisma.taskUser.findMany({
-                        where: {
-                            task_id: Number(id),
-                        },
-                        include: {
-                            user: true
-                        }
+                    newUsers.forEach(newUser => {
+                        new_value += newUser.user.name + ", ";
                     });
-                    if(newUsers.length)
-                    {
-                        newUsers.map(newUser => {
-                            new_value += newUser.user.name + ", "
-                        });
-                    }
-
-                    const change = await this.prisma.taskChange.create({
-                        data: {
-                            task_id: Number(id),
-                            user_id: String(telegram_id),
-                            old_value,
-                            new_value,
-                            type: "participant"
-                        }
-                    });
-
-                    if(change) await this.notification.notificationSender(change.id)
                 }
             }
 
-            return "success"
+            if (old_value !== new_value) {
+                const change = await this.prisma.taskChange.create({
+                    data: {
+                        task_id: Number(id),
+                        user_id: String(telegram_id),
+                        old_value,
+                        new_value,
+                        type: "participant"
+                    }
+                });
+
+                if(change) await this.notification.notificationSender(change.id);
+            }
+
+            return "success";
         } catch (error) {
             console.log("Update participant error: " + error);
             if (error instanceof HttpException) throw error;
@@ -753,7 +780,17 @@ export class TaskService {
         if(!checkUser) throw new NotFoundException("User not found");
 
         const checkTask = await this.prisma.task.findUnique({
-            where: { id: id_number }
+            where: { id: id_number },
+            include: {
+                project: {
+                    include: {
+                        project_users: {
+                            where: { user_id: String(telegram_id) },
+                            include: { role: true }
+                        }
+                    }
+                }
+            }
         });
 
         if(!checkTask) throw new NotFoundException("Task not found");
@@ -765,7 +802,11 @@ export class TaskService {
             }
         });
 
-        if(!checkTaskUser) throw new BadRequestException("You can not change task");
+        const isAuthor = String(checkTask.user_id) === String(telegram_id);
+        const isAdmin = checkTask.project?.project_users?.[0]?.role?.name === 'admin';
+        const isAssignee = !!checkTaskUser;
+
+        if(!isAuthor && !isAdmin && !isAssignee) throw new BadRequestException("You can not change task");
 
         const updatedTask = await this.prisma.task.update({
             where: { id: id_number },
@@ -803,11 +844,17 @@ export class TaskService {
             is_backlog: false,
             is_archive: false,
             status: {
+                order: {
+                    notIn: [4, 5]
+                },
                 name: {
                     notIn: [
                         defaultStatuses.en.completed, 
                         defaultStatuses.ru.completed, 
                         defaultStatuses.uz.completed, 
+                        defaultStatuses.en.cancelled, 
+                        defaultStatuses.ru.cancelled, 
+                        defaultStatuses.uz.cancelled, 
                     ]
                 }
             }
@@ -885,12 +932,30 @@ export class TaskService {
                 },
                 group: true,
                 tasks: {
+                    where: {
+                        is_archive: false,
+                        taskChange: {
+                            some: {
+                                created_at: {
+                                    lte: endOfWeek,
+                                    gte: startOfWeek,
+                                }
+                            }
+                        }
+                    },
                     include: {
                         status: true,
                         taskUser: {
                             include: { user: true }
                         },
-                        taskChange: true
+                        taskChange: {
+                            where: {
+                                created_at: {
+                                    lte: endOfWeek,
+                                    gte: startOfWeek,
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1014,14 +1079,22 @@ export class TaskService {
 
 
     getWeekRange() {
-        const date = new Date()
-        const startOfWeek = new Date();
-        startOfWeek.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? - 6 : 1));
-        startOfWeek.setHours(0, 0, 0, 0); 
+        const now = new Date();
+        const day = now.getDay();
+        const diffToCurrentMonday = day === 0 ? -6 : 1 - day;
+        
+        const currentMonday = new Date(now);
+        currentMonday.setDate(now.getDate() + diffToCurrentMonday);
+        currentMonday.setHours(0, 0, 0, 0);
+
+        // Previous week Monday to Sunday
+        const startOfWeek = new Date(currentMonday);
+        startOfWeek.setDate(currentMonday.getDate() - 7);
+
         const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6); 
-        endOfWeek.setHours(23, 59, 59, 999); 
-    
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
         return { startOfWeek, endOfWeek };
     }
 
@@ -1067,6 +1140,7 @@ export class TaskService {
                 group: true,
                 tasks: {
                     where: {
+                        is_archive: false,
                         taskChange: {
                             some: {
                                 created_at: {
