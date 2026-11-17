@@ -10,6 +10,10 @@ const getAuthorizationHeader = (): string => {
     return "tma TEST_MODE";
   }
   try {
+    const directInitData = (window as unknown as { Telegram?: { WebApp?: { initData?: string } } })?.Telegram?.WebApp?.initData;
+    if (directInitData) {
+      return `tma ${directInitData}`;
+    }
     return `tma ${retrieveLaunchParams().initDataRaw ?? ""}`;
   } catch {
     return "tma ";
@@ -22,6 +26,11 @@ const axiosClient = axios.create({
     "Content-Type": "application/json",
     "Authorization": getAuthorizationHeader()
   }
+});
+
+axiosClient.interceptors.request.use((config) => {
+  config.headers.Authorization = getAuthorizationHeader();
+  return config;
 });
 
 export default axiosClient;

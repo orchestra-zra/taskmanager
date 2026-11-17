@@ -5,7 +5,7 @@ import axiosClient from "../common/axiosClient";
 import Comment, { ICommentIn } from "./Comment";
 import { t } from "i18next";
 import { QueryClient } from "@tanstack/react-query";
-import { postEvent } from "@telegram-apps/sdk";
+import WebApp from "@twa-dev/sdk";
 import { toast } from "react-toastify";
 import BigCommentIcon from "../assets/icons/BigCommentIcon";
 import EventCard from "./EventCard";
@@ -62,11 +62,9 @@ const CommentAndEvent = (props: {
           queryKey: ["taskData"],
         });
         setState({ ...state, commentText: "" });
-        postEvent("web_app_expand");
-        postEvent("web_app_setup_main_button", { is_visible: false });
-        postEvent("web_app_setup_swipe_behavior", {
-          allow_vertical_swipe: false,
-        });
+        WebApp.expand();
+        WebApp.MainButton.hide();
+        WebApp.disableVerticalSwipes();
       }
     } catch (error) {
       console.log("create comment: " + error);
