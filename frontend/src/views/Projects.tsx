@@ -12,6 +12,7 @@ import clsx from "clsx";
 import { useSuperGroups } from "../data/hooks/group";
 import WebApp from "@twa-dev/sdk";
 import { UserInterface } from "../data/hooks/users/interface";
+import { useTheme } from "../context/ThemeContext";
 
 interface IGroup {
   image: string;
@@ -26,10 +27,12 @@ interface IProject {
 }
 
 const Projects = () => {
+  const { setAppHeaderColor } = useTheme();
   useEffect(() => {
     const BackButton = WebApp.BackButton;
     BackButton.show();
-  }, []);
+    setAppHeaderColor("app");
+  }, [setAppHeaderColor]);
   const { id } = useParams();
   const navigate = useNavigate();
   const [groups, setGroups] = useState<IGroup[]>([]);
@@ -79,7 +82,7 @@ const Projects = () => {
 
   return (
     <div>
-      <nav className='fixed h-[100px] py-[12px] w-full top-0 max-w-[700px] mx-auto flex justify-between items-center px-3 z-20 bg-[#f2f2f7]'>
+      <nav className='fixed h-[100px] py-[12px] w-full top-0 max-w-[700px] mx-auto flex justify-between items-center px-3 z-20 bg-appBg'>
         <div
           className='bg-customPurple flex justify-between rounded-[20px] w-full h-full p-4'
           style={{ background: color }}

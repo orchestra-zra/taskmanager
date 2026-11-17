@@ -8,9 +8,11 @@ import ArrowRight from "../assets/icons/ArrowRight";
 import { AddTaskButtonHome } from "../components/AddTaskButtonHome";
 import { t } from "i18next";
 import { useGetTasks } from "../data/hooks/tasks";
+import { useTheme } from "../context/ThemeContext";
 import WebApp from "@twa-dev/sdk";
 
 const Home = () => {
+  const { setAppHeaderColor } = useTheme();
   const [isOpenCommand, setIsOpenCommand] = useState(false);
   const [myTasks, setMyTasks] = useState(0);
 
@@ -19,12 +21,12 @@ const Home = () => {
   useEffect(() => {
     const BackButton = WebApp.BackButton;
     BackButton.hide();
-    WebApp.setHeaderColor("#F2F2F7");
+    setAppHeaderColor("app");
     const onboardingCompleted = localStorage.getItem("onboardingCompleted");
     if (!onboardingCompleted) {
       setIsOpenCommand(true);
     }
-  }, []);
+  }, [setAppHeaderColor]);
 
   useEffect(() => {
     if (data) {

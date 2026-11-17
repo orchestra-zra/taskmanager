@@ -38,11 +38,16 @@ export interface role {
   user: number;
 }
 
+import { useTheme } from "../context/ThemeContext";
+import haptic from "../common/haptic";
+
 const GroupSettings = () => {
+  const { setAppHeaderColor } = useTheme();
   useEffect(() => {
     const BackButton = WebApp.BackButton;
     BackButton.show();
-  }, []);
+    setAppHeaderColor("card");
+  }, [setAppHeaderColor]);
   const { id } = useParams();
   const { user } = useUserContext();
 
@@ -70,6 +75,7 @@ const GroupSettings = () => {
   const { mutate: projectDelete } = useDeleteProject(Number(id));
 
   const deleteProject = () => {
+    haptic.notification('warning');
     projectDelete();
   };
 
@@ -466,8 +472,9 @@ const GroupSettings = () => {
           {isOpenDelete && (
             <div className='flex gap-4'>
               <div
-                className='w-[50%] bottom-[22px] h-[44px] bg-[#f2f2f7] text-[#1e1e1e] flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 capitalize font-sfpro text-[14px] font-medium'
+                className='w-[50%] bottom-[22px] h-[44px] bg-[#f2f2f7] text-[#1e1e1e] flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 capitalize font-sfpro text-[14px] font-medium cursor-pointer'
                 onClick={() => {
+                  haptic.impact('light');
                   setConfirmationInput("");
                   setIsOpenDelete(false);
                   setFocusDelete(false);

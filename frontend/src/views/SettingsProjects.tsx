@@ -4,14 +4,16 @@ import { t } from "i18next";
 import { useGroups, useSaveSelectedGroups } from "../data/hooks/group";
 import { Loader } from "../components/mini/Loader";
 import WebApp from "@twa-dev/sdk";
-
+import { useTheme } from "../context/ThemeContext";
+import haptic from "../common/haptic";
 
 const SettingsProjects = () => {
+  const { setAppHeaderColor } = useTheme();
   useEffect(() => {
     const BackButton = WebApp.BackButton;
     BackButton.show();
-    WebApp.setHeaderColor("#ffffff");
-  }, [])
+    setAppHeaderColor("card");
+  }, [setAppHeaderColor]);
   
   const { data, isLoading } = useGroups();
 
@@ -55,10 +57,13 @@ const SettingsProjects = () => {
           />
         ))}
       </div>
-      <div className='fixed bg-[#f2f2f7] bottom-0 left-3 right-3 flex justify-center pb-[42px] pt-[8px]'>
+      <div className='fixed bg-appBg bottom-0 left-3 right-3 flex justify-center pb-[42px] pt-[8px]'>
         <div
-          className='  w-[94%] bg-custom-gradient-blue text-white flex justify-center items-center py-4 rounded-xl'
-          onClick={handleSave}
+          className='w-[94%] bg-custom-gradient-blue text-white flex justify-center items-center py-4 rounded-xl cursor-pointer'
+          onClick={() => {
+            haptic.impact('medium');
+            handleSave();
+          }}
         >
           {t('save')}
         </div>

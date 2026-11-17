@@ -42,6 +42,8 @@ import { UserInterface } from "../data/hooks/users/interface";
 import { IUserFromGroup } from "../components/TopProjectBar";
 import ErrorState from "../components/ErrorState";
 import { getStatusLabel, getStatusColorClasses } from "../common/statusHelper";
+import haptic from "../common/haptic";
+import { useTheme } from "../context/ThemeContext";
 
 const getTask = async (id: number) => {
   return await fetchData("/task/show/" + id, {});
@@ -97,16 +99,18 @@ const initialState: State = {
 };
 
 const Task = () => {
+  const { setAppHeaderColor } = useTheme();
   useEffect(() => {
     const BackButton = WebApp.BackButton;
     BackButton.show();
-    WebApp.setHeaderColor("#FFFFFF");
-  }, []);
+    setAppHeaderColor("card");
+  }, [setAppHeaderColor]);
 
   const { id } = useParams();
   const { user } = useUserContext();
 
   const setParticipants = (user: UserInterface) => {
+    haptic.selection();
     const check = state.selectedUsers.some(
       (u: UserInterface) => u.telegram_id === user.telegram_id,
     );
@@ -190,24 +194,37 @@ const Task = () => {
   const { mutate: updateStatus } = useUpdateStatus(Number(task?.id));
 
   const handleStatusUpdate = async (newStatus: number): Promise<void> => {
-    updateStatus(newStatus);
+    haptic.selection();
+    updateStatus(newStatus, {
+      onSuccess: () => haptic.notification('success'),
+      onError: () => haptic.notification('error'),
+    });
   };
 
   const updatePriorityMutation = useUpdatePriority(task?.id);
 
   const handleUpdatePriority = (newPriority: number) => {
-    updatePriorityMutation.mutate(newPriority);
+    haptic.selection();
+    updatePriorityMutation.mutate(newPriority, {
+      onSuccess: () => haptic.notification('success'),
+      onError: () => haptic.notification('error'),
+    });
   };
 
   const deadlineInputRef = useRef<HTMLInputElement>(null);
   const updateDeadlineMutation = useUpdateDeadline(Number(task?.id));
 
   const handleDeadlineUpdate = (newDeadline: string) => {
-    updateDeadlineMutation.mutate(newDeadline || null);
+    haptic.selection();
+    updateDeadlineMutation.mutate(newDeadline || null, {
+      onSuccess: () => haptic.notification('success'),
+      onError: () => haptic.notification('error'),
+    });
   };
 
   const deleteTask = async () => {
     if (deleteTaskMutation.isPending) return;
+    haptic.notification('warning');
     deleteTaskMutation.mutate(Number(id));
   };
 
@@ -215,11 +232,18 @@ const Task = () => {
 
   const archiveTask = () => {
     if (archiveTaskMutation.isPending) return;
+    haptic.impact('medium');
     const isArchived = !task.is_archive;
-    archiveTaskMutation.mutate({
-      isArchived: isArchived,
-      taskId: task?.id,
-    });
+    archiveTaskMutation.mutate(
+      {
+        isArchived: isArchived,
+        taskId: task?.id,
+      },
+      {
+        onSuccess: () => haptic.notification('success'),
+        onError: () => haptic.notification('error'),
+      },
+    );
   };
 
   const updateParticipantsMutation = useUpdateParticipants(Number(id), () => {
@@ -227,10 +251,14 @@ const Task = () => {
   });
 
   const updateParticipants = () => {
+    haptic.impact('medium');
     const selectedUserIds = state.selectedUsers.map(
       (user: UserInterface) => user.telegram_id,
     );
-    updateParticipantsMutation.mutate(selectedUserIds);
+    updateParticipantsMutation.mutate(selectedUserIds, {
+      onSuccess: () => haptic.notification('success'),
+      onError: () => haptic.notification('error'),
+    });
   };
 
   if (isLoading) return <Loader customClass="h-[100vh]" />;
@@ -332,7 +360,10 @@ const Task = () => {
           </div>
           <div
             className="flex justify-between items-center p-2 h-[44px]"
-            onClick={() => setState({ openParticipant: true })}
+            onClick={() => {
+              haptic.impact('light');
+              setState({ openParticipant: true });
+            }}
           >
             <div className="flex justify-between items-center gap-4">
               <div className="text-gray-400">
@@ -592,8 +623,11 @@ const Task = () => {
 
         <div className="flex mt-3 gap-3 pb-[50px]">
           <div
-            onClick={() => setState({ isOpenDelete: true })}
-            className="w-full h-[55px] bg-customGrey4 rounded-xl text-[#FF3B30] flex flex-col justify-center items-center"
+            onClick={() => {
+              haptic.impact('light');
+              setState({ isOpenDelete: true });
+            }}
+            className="w-full h-[55px] bg-customGrey4 rounded-xl text-[#FF3B30] flex flex-col justify-center items-center cursor-pointer"
           >
             <div>
               <IoTrash size={20} />
@@ -601,8 +635,11 @@ const Task = () => {
             <p className="text-[12px]">{t("delete")}</p>
           </div>
           <div
-            onClick={() => setState({ isOpenArchive: true })}
-            className="w-full h-[55px] bg-customGrey4 rounded-xl flex flex-col justify-center items-center"
+            onClick={() => {
+              haptic.impact('light');
+              setState({ isOpenArchive: true });
+            }}
+            className="w-full h-[55px] bg-customGrey4 rounded-xl flex flex-col justify-center items-center cursor-pointer"
           >
             {!task.is_archive ? (
               <div>

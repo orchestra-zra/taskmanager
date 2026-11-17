@@ -4,13 +4,15 @@ import { ProjectCarusel } from "../components/ProjectCarusel";
 import { useEffect } from "react";
 // import { useUserContext } from "../context/UserContext";
 import WebApp from "@twa-dev/sdk";
+import { useTheme } from "../context/ThemeContext";
 
 const Project = () => {
+  const { setAppHeaderColor } = useTheme();
   useEffect(() => {
     const BackButton = WebApp.BackButton;
     BackButton.show();
-    WebApp.setHeaderColor("#FFFFFF");
-  }, []);
+    setAppHeaderColor("card");
+  }, [setAppHeaderColor]);
 
   const { id } = useParams();
 
