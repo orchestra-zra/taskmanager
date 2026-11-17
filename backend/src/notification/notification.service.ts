@@ -138,7 +138,7 @@ export class NotificationService {
                 break;
 
             case "deadline":
-                if(projectPermissions.includes('edit')) message = await this.notificationDeadline({author, users: userNames, project, changed_user, text, deadline: new Date(deadline), user_name});
+                if(projectPermissions.includes('edit')) message = await this.notificationDeadline({author, users: userNames, project, changed_user, text, deadline: new_value || (deadline ? new Date(deadline).toISOString().split('T')[0] : 'None'), user_name});
                 break;
 
             case "archive":
@@ -516,17 +516,18 @@ Participants: ${list}`;
     }
 
     @CatchErrorDecorator()
-    async notificationDeadline(params: {author: string, users: any[], project: string, changed_user: string, text: string, deadline: Date, user_name?: string})
+    async notificationDeadline(params: {author: string, users: any[], project: string, changed_user: string, text: string, deadline: Date | string, user_name?: string})
     {
         const { author, project, text, deadline, changed_user, user_name, users} = params;
         let list: string = author;
         
         if(users.length) list = users.join(", ");
+        const deadlineStr = deadline instanceof Date ? deadline.toISOString().split('T')[0] : (deadline || 'None');
 
         return `#changed by ${user_name ? "<a href='https://t.me/" + user_name + "'>" + changed_user +"</a>" : changed_user}
 ${text}
 
-🗓Deadline: <b>${deadline}</b>
+🗓Deadline: <b>${deadlineStr}</b>
 
 Project: ${project}
 Author:  ${author}

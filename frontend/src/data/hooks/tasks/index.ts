@@ -147,6 +147,25 @@ export const useUpdatePriority = (taskId: number) => {
   });
 };
 
+export const useUpdateDeadline = (taskId: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (deadline: string | null) =>
+      axiosClient.put(`/task/${taskId}/deadline`, { deadline }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskData"] });
+    },
+    onError: (error) => {
+      console.error("Update deadline error:", error);
+      toast.error(t("error_update_deadline", "Failed to update deadline"), {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    },
+  });
+};
+
 export const useGetTasks = () => {
   return useQuery({
     queryKey: ["Mytasks"],

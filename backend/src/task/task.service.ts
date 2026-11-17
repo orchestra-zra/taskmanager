@@ -401,6 +401,58 @@ export class TaskService {
         }
     }
 
+    async updateDeadline(user_id: number, deadline: string | null, id: number)
+    {
+        await this.assertTaskAccess(user_id, Number(id));
+
+        try {
+            const task = await this.prisma.task.findUnique({
+                where: {
+                    id: Number(id)
+                },
+                include: {
+                    project: true,
+                }
+            });
+            if(!task) throw new NotFoundException("Task not found");
+
+            const newDeadline = deadline ? new Date(deadline) : null;
+            const oldDeadlineStr = task.deadline ? task.deadline.toISOString().split('T')[0] : "";
+            const newDeadlineStr = newDeadline ? newDeadline.toISOString().split('T')[0] : "";
+
+            if (oldDeadlineStr !== newDeadlineStr) {
+                await this.prisma.task.update({
+                    where: {
+                        id: Number(id)
+                    },
+                    data: {
+                        deadline: newDeadline
+                    }
+                });
+
+                const change = await this.prisma.taskChange.create({
+                    data: {
+                        user_id: String(user_id),
+                        task_id: Number(id),
+                        type: "deadline",
+                        old_value: oldDeadlineStr,
+                        new_value: newDeadlineStr
+                    }
+                });
+
+                if(change) await this.notification.notificationSender(change.id);
+            }
+
+            return {
+                message: "Deadline successfully changed"
+            };
+        } catch (error) {
+            console.log("Update deadline task: " + error);
+            if (error instanceof HttpException) throw error;
+            throw new HttpException("Failed to update deadline", 500);
+        }
+    }
+
     async show(id: number, user_id: string)
     {
         try {
