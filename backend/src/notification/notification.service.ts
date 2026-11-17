@@ -46,8 +46,22 @@ export class NotificationService {
         
         if(!change) return;
 
-        const projectPermissions = JSON.parse(change.task.project.projectNotificationPermissions);
-        const statusPermissions = JSON.parse(change.task.project.statusNotificationPermissions);
+        let projectPermissions: string[] = [];
+        let statusPermissions: string[] = [];
+        try {
+            projectPermissions = change.task.project.projectNotificationPermissions
+                ? JSON.parse(change.task.project.projectNotificationPermissions)
+                : [];
+        } catch {
+            projectPermissions = [];
+        }
+        try {
+            statusPermissions = change.task.project.statusNotificationPermissions
+                ? JSON.parse(change.task.project.statusNotificationPermissions)
+                : [];
+        } catch {
+            statusPermissions = [];
+        }
 
         const users = change.task.taskUser.map(user => user.user);
         const userNames = change.task.taskUser.map(user => user.user.name);
@@ -107,22 +121,23 @@ export class NotificationService {
                 break;
         
             case "priority":
-                message = await this.notificationPriority({author, users: userNames, project, changed_user, text, priority: new_value, user_name});
+                if(projectPermissions.includes('edit')) message = await this.notificationPriority({author, users: userNames, project, changed_user, text, priority: new_value, user_name});
                 break;
 
             case "participant":
-                message = await this.notificationParticipant({author, users: userNames, project, changed_user, text, user_name})
-
+                if(projectPermissions.includes('edit')) message = await this.notificationParticipant({author, users: userNames, project, changed_user, text, user_name});
                 break;
+
             case "deadline":
-                message = await this.notificationDeadline({author, users: userNames, project, changed_user, text, deadline: new Date(deadline), user_name})
+                if(projectPermissions.includes('edit')) message = await this.notificationDeadline({author, users: userNames, project, changed_user, text, deadline: new Date(deadline), user_name});
                 break;
 
             case "archive":
-                message = await this.notificationArchive({author, users: userNames, project, changed_user, text, user_name})
+                if(projectPermissions.includes('archive')) message = await this.notificationArchive({author, users: userNames, project, changed_user, text, user_name});
                 break;
+
             case "unarchive":
-                message = await this.notificationUnarchive({author, users: userNames, project, changed_user, text, user_name})
+                if(projectPermissions.includes('archive') || projectPermissions.includes('unarchive')) message = await this.notificationUnarchive({author, users: userNames, project, changed_user, text, user_name});
                 break;
 
             default:
