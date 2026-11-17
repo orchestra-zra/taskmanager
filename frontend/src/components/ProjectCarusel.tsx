@@ -14,8 +14,6 @@ import TasksIcon from "../assets/icons/TaskIcon";
 import { UserInterface } from "../data/hooks/users/interface";
 import { getStatusLabel } from "../common/statusHelper";
 
-import haptic from "../common/haptic";
-
 export interface Params {
   user_ids?: string;
 }
@@ -123,14 +121,12 @@ export const ProjectCarusel = () => {
 
   const handleSwipe = (direction: "LEFT" | "RIGHT") => {
     if (direction === "LEFT" && state.index < state.statuses.length - 1) {
-      haptic.impact('medium');
       setState({
         selectedStatus: state.statuses[state.index + 1].id,
         index: state.index + 1,
       });
       statusClicker(state.statuses[state.index + 1].id);
     } else if (direction === "RIGHT" && state.index > 0) {
-      haptic.impact('medium');
       setState({
         selectedStatus: state.statuses[state.index - 1].id,
         index: state.index - 1,
@@ -166,7 +162,6 @@ export const ProjectCarusel = () => {
   };
 
   const updateHash = (status: number) => {
-    haptic.impact('light');
     setState({ selectedStatus: status });
     statusClicker(status);
   };

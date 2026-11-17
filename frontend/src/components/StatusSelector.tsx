@@ -1,6 +1,5 @@
 import { IStatus } from "./ProjectCarusel";
 import { getStatusLabel } from "../common/statusHelper";
-import haptic from "../common/haptic";
 
 interface IProps {
   selectStatus: number | string | null;
@@ -17,10 +16,7 @@ const StatusSelector = (props: IProps) => {
       {selectStatus && (
         <div
           className='bg-black opacity-45 z-20 fixed top-0 w-full h-full'
-          onClick={() => {
-            haptic.impact('light');
-            setSelectStatus({ selectStatus: null });
-          }}
+          onClick={() => setSelectStatus({ selectStatus: null })}
         ></div>
       )}
       <div
@@ -32,7 +28,6 @@ const StatusSelector = (props: IProps) => {
           statuses.map((status: IStatus) => (
             <div
               onClick={() => {
-                haptic.selection();
                 handleStatusUpdate(Number(status.id));
                 setSelectStatus({ selectStatus: null });
               }}

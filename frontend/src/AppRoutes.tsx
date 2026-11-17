@@ -22,7 +22,7 @@ import "./index.css";
 
 const AppRoutes = () => {
   return (
-    <div className="max-w-[700px] app-main-root bg-appBg text-textPrimary h-[100vh] mx-auto w-full relative select-none scrollbar-hidden">
+    <div className="max-w-[700px] bg-[#F2F2F7] h-[100vh] mx-auto w-full relative select-none scrollbar-hidden">
       <ToastContainer stacked />
       <ErrorBoundary>
       <Routes>

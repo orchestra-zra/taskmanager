@@ -10,19 +10,17 @@ import WebApp from "@twa-dev/sdk";
 import { useEffect } from "react";
 import { Loader } from "../components/mini/Loader";
 import ErrorState from "../components/ErrorState";
-import { useTheme } from "../context/ThemeContext";
 
 const getArchiveById = async (id: number) => {
   return await fetchData(`project/${id}/archive`, {});
 };
 
 const Archive = () => {
-  const { setAppHeaderColor } = useTheme();
   useEffect(() => {
     const BackButton = WebApp.BackButton;
     BackButton.show();
-    setAppHeaderColor("card");
-  }, [setAppHeaderColor]);
+    WebApp.setHeaderColor("#ffffff");
+  }, []);
   const { id } = useParams();
 
   const {

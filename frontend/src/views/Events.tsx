@@ -5,7 +5,6 @@ import { dateTimeConverter } from "../common/dateTimeConverter";
 import { useGetEvents } from "../data/hooks/events";
 import { Loader } from "../components/mini/Loader";
 import WebApp from "@twa-dev/sdk";
-import { useTheme } from "../context/ThemeContext";
 
 interface IEvent {
   date: string;
@@ -13,12 +12,11 @@ interface IEvent {
 }
 
 const Events = () => {
-  const { setAppHeaderColor } = useTheme();
   useEffect(() => {
     const BackButton = WebApp.BackButton;
     BackButton.show();
-    setAppHeaderColor("card");
-  }, [setAppHeaderColor]);
+    WebApp.setHeaderColor("#ffffff");
+  }, []);
 
   const { data, isLoading, isFetching } = useGetEvents();
 
