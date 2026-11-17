@@ -6,6 +6,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import { t } from "i18next";
 import { useArchiveTask, useDeleteTask } from "../data/hooks/tasks";
+import haptic from "../common/haptic";
 
 interface IArchive {
   archive: IArchiveIn;
@@ -36,17 +37,28 @@ const ArchiveComponent = (props: IArchive) => {
   const archiveTaskMutation = useArchiveTask();
 
   const archiveTask = () => {
+    haptic.impact('medium');
     const isArchived = !props.archive.is_archive;
-    archiveTaskMutation.mutate({
-      isArchived: isArchived,
-      taskId: props.archive.id,
-    });
+    archiveTaskMutation.mutate(
+      {
+        isArchived: isArchived,
+        taskId: props.archive.id,
+      },
+      {
+        onSuccess: () => haptic.notification('success'),
+        onError: () => haptic.notification('error'),
+      },
+    );
   };
 
   const deleteTaskMutation = useDeleteTask();
 
   const deleteTask = async () => {
-    deleteTaskMutation.mutate(Number(props.archive.id));
+    haptic.notification('warning');
+    deleteTaskMutation.mutate(Number(props.archive.id), {
+      onSuccess: () => haptic.notification('success'),
+      onError: () => haptic.notification('error'),
+    });
   };
 
   return (
@@ -129,7 +141,10 @@ const ArchiveComponent = (props: IArchive) => {
         <div className="mt-2">
           {isOpenArchive && (
             <div className='flex gap-2'>
-              <div className='w-[50%] h-[44px] bottom-[22px] bg-[#f2f2f7] text-[#1e1e1e] flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 cursor-pointer font-sfpro text-[14px] font-medium' onClick={() => setIsOpenArchive(false)}>
+              <div className='w-[50%] h-[44px] bottom-[22px] bg-[#f2f2f7] text-[#1e1e1e] flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 cursor-pointer font-sfpro text-[14px] font-medium' onClick={() => {
+                haptic.impact('light');
+                setIsOpenArchive(false);
+              }}>
                 <p>{t("cancel")}</p>
               </div>
 
@@ -182,8 +197,9 @@ const ArchiveComponent = (props: IArchive) => {
           {isOpenDelete && (
             <div className='flex gap-2'>
               <div
-                className='w-[50%] bottom-[22px] h-[44px] bg-[#f2f2f7] text-[#1e1e1e] flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 capitalize font-sfpro text-[14px] font-medium'
+                className='w-[50%] bottom-[22px] h-[44px] bg-[#f2f2f7] text-[#1e1e1e] flex justify-center items-center py-4 left-6 right-6 rounded-xl mt-3 capitalize font-sfpro text-[14px] font-medium cursor-pointer'
                 onClick={() => {
+                  haptic.impact('light');
                   setIsOpenDelete(false);
                   setConfirmationInput("");
                 }}

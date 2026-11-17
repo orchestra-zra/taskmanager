@@ -1,4 +1,5 @@
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}"
@@ -31,6 +32,14 @@ export default {
         'extra-wide': '1px',
       },
       colors: {
+        appBg: 'var(--app-bg)',
+        cardBg: 'var(--card-bg)',
+        elevatedBg: 'var(--elevated-bg)',
+        subtleBg: 'var(--subtle-bg)',
+        textPrimary: 'var(--text-primary)',
+        textSecondary: 'var(--text-secondary)',
+        borderApp: 'var(--border-app)',
+        dividerApp: 'var(--divider-app)',
         customBlue: 'rgba(0, 122, 255, 1)',
         customBlueLight: "rgba(0, 122, 255, 0.15)",
         customIndigo: "rgba(88, 86, 214, 1)",
@@ -40,13 +49,13 @@ export default {
         customIndigo150: "rgba(100, 99, 176, 0.15)",
         customIndigo600: "rgba(86, 148, 214, 0.5)",
         customIndigoLight: "rgba(88, 86, 214, 0.15)",
-        customBlack: "rgba(0,0,0,0.2)",
+        customBlack: "var(--custom-black)",
         customBlack1: "rgba(0,0,0,0.12)",
         customBlack2: "rgba(64, 64, 64, 0.25)",
-        customBlackLight: "rgba(27, 31, 38, 0.72)",
+        customBlackLight: "var(--custom-black-light)",
         customDark: "#000000",
         customDark1: "rgba(30, 30, 30, 1)",
-        customBlack1E: "#1E1E1E",
+        customBlack1E: "var(--custom-black-1e)",
         customGray: "#8080808C",
         customGray1: "rgba(182, 182, 182, 0.25)",
         customGray2: "rgba(120, 120, 128, 0.12)",

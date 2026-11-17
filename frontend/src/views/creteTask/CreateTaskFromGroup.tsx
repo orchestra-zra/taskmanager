@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useGetTaskHeader } from "../../common/fetchTasks";
 import { Loader } from "../../components/mini/Loader";
 import { useNavigate, useParams } from "react-router-dom";
-import WebApp from "@twa-dev/sdk";
 import { t } from "i18next";
 import Participant from "./Participant";
 import Priority from "./Priority";
@@ -11,6 +10,10 @@ import Square from "../../assets/icons/Square";
 import { useCreateTask } from "../../data/hooks/tasks";
 import Deadline from "./Deadline";
 import { UserInterface } from "../../data/hooks/users/interface";
+
+import { useTheme } from "../../context/ThemeContext";
+import haptic from "../../common/haptic";
+import usePreventClose from "../../common/usePreventClose";
 
 export interface IPriority {
   title: string;
@@ -26,23 +29,29 @@ interface FormValues {
 }
 
 const CreateTaskFromGroup = () => {
+  const { setAppHeaderColor } = useTheme();
   useEffect(() => {
-    WebApp.setHeaderColor("#F2F2F7");
-  }, []);
+    setAppHeaderColor("app");
+  }, [setAppHeaderColor]);
+
   const createTaskMutate = useCreateTask();
   const { project_id } = useParams();
   const navigate = useNavigate();
 
   const {
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
     control,
   } = useForm<FormValues>({
     defaultValues: { priority: 2, name: "", description: "", participants: [] },
   });
 
+  // TMA Section 1.3: Prevent accidental app close when user has unsaved task input
+  usePreventClose(isDirty);
+
   const onSubmit = async (data: FormValues) => {
     if (createTaskMutate.isPending) return;
+    haptic.impact('medium');
     const taskData = {
       project_id: Number(project_id),
       name: data.name,
@@ -53,10 +62,16 @@ const CreateTaskFromGroup = () => {
       ),
       point: 0,
       deadline: data.deadline,
-      // point: Number(data.storyPoint),
     };
 
-    createTaskMutate.mutate(taskData);
+    createTaskMutate.mutate(taskData, {
+      onSuccess: () => {
+        haptic.notification('success');
+      },
+      onError: () => {
+        haptic.notification('error');
+      },
+    });
   };
 
   const {
@@ -72,11 +87,14 @@ const CreateTaskFromGroup = () => {
   }
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="fixed top-0 left-0 right-0 flex justify-between h-[56px] items-center bg-[#f2f2f7] p-3">
+      <div className="fixed top-0 left-0 right-0 flex justify-between h-[56px] items-center bg-appBg p-3 z-10">
         <div className="text-gray-500 h-full w-[60px] flex items-center">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              haptic.impact('light');
+              navigate(-1);
+            }}
             className="text-[15px] font-sfpro text-customBlack font-medium"
           >
             {t("cancel")}

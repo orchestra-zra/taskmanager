@@ -11,7 +11,6 @@ function AppProvider({ children }: PropsWithChildren) {
     const initializeWebApp = async () => {
       WebApp.SettingsButton.show();
       WebApp.SettingsButton.onClick(() => navigate("/settings"));
-      WebApp.setBackgroundColor("#f2f2f7");
       WebApp.expand();
       WebApp.MainButton.hide();
       WebApp.disableVerticalSwipes();
@@ -29,7 +28,7 @@ function AppProvider({ children }: PropsWithChildren) {
     // every navigation (react-router v6), and adding it here would re-register
     // the handlers on each route change — Telegram would then fire every
     // registered callback per press (multiple history.back() calls / redirects).
-    // The WebApp init/expand/setBackgroundColor calls must also run only once.
+    // The WebApp init/expand calls must also run only once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
@@ -40,8 +39,8 @@ function AppProvider({ children }: PropsWithChildren) {
         "linear-gradient(to top, #5856D6 0%, #007AFF 100%)",
       );
     } else {
-      root.style.setProperty("background-color", "#f2f2f7");
-      root.style.setProperty("background-image", "");
+      root.style.removeProperty("background-image");
+      root.style.removeProperty("background-color");
     }
   }, [location.pathname]);
   const contextValue = {};
