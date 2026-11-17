@@ -16,8 +16,6 @@ import WebApp from "@twa-dev/sdk";
 import { UserInterface } from "../data/hooks/users/interface";
 import ErrorState from "../components/ErrorState";
 import { getStatusLabel } from "../common/statusHelper";
-import haptic from "../common/haptic";
-import { useTheme } from "../context/ThemeContext";
 
 interface IMyTasksState {
   statuses: IStatus[];
@@ -62,12 +60,11 @@ interface IGroupProject {
 }
 
 const Mytasks = () => {
-  const { setAppHeaderColor } = useTheme();
   useEffect(() => {
     const BackButton = WebApp.BackButton;
     BackButton.show();
-    setAppHeaderColor("card");
-  }, [setAppHeaderColor]);
+    WebApp.setHeaderColor("#ffffff");
+  }, []);
 
   const [isOpenProjectFilter, setIsOpenProjectFilter] = useState(false);
   const [isOpenProject, setIsOpenProject] = useState<number>();
@@ -75,7 +72,6 @@ const Mytasks = () => {
   const [selectedProject, setSelectedProject] = useState<IGroupProject>();
 
   const handleOpenProject = (id: number) => {
-    haptic.impact('light');
     setIsOpenProject(id);
     if (isOpenProject === id) {
       setIsOpenProject(0);
@@ -94,13 +90,11 @@ const Mytasks = () => {
 
   const handleSwipe = (direction: "LEFT" | "RIGHT") => {
     if (direction === "LEFT" && state.index < state.statuses.length - 1) {
-      haptic.impact('medium');
       const newIndex = state.index + 1;
       setState({ index: newIndex });
       getTasks(state.statuses[newIndex].name);
       statusClicker(state.statuses[newIndex].id);
     } else if (direction === "RIGHT" && state.index > 0) {
-      haptic.impact('medium');
       const newIndex = state.index - 1;
       setState({ index: newIndex });
       getTasks(state.statuses[newIndex].name);
@@ -218,10 +212,7 @@ const Mytasks = () => {
         </div>
         <div
           className='flex items-center border border-[#E1E8F5] rounded-[25px] p-[4px] pl-[10px] pr-[7px] gap-[6px] cursor-pointer'
-          onClick={() => {
-            haptic.impact('light');
-            setIsOpenProjectFilter(true);
-          }}
+          onClick={() => setIsOpenProjectFilter(true)}
         >
           <p className='text-[14px] font-[300] text-customBlack font-sfpro'>
             {selectedProject
@@ -245,7 +236,6 @@ const Mytasks = () => {
                 key={index}
                 className={`flex h-full  items-center gap-2 px-4 relative cursor-pointer`}
                 onClick={() => {
-                  haptic.impact('light');
                   setState({ index });
                   getTasks(status.name);
                   updateHash(status.id);

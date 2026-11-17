@@ -7,7 +7,6 @@ import './i18n';
 import Application from "./Application.tsx";
 import { UserProvider } from "./context/UserContext.tsx";
 import { AppProvider } from "./context/AppContext.tsx";
-import { ThemeProvider } from "./context/ThemeContext.tsx";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -21,13 +20,11 @@ WebApp.ready();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <ThemeProvider>
-        <UserProvider>
-          <AppProvider>
-            <Application/>
-          </AppProvider>
-        </UserProvider>
-      </ThemeProvider>
+      <UserProvider>
+        <AppProvider>
+          <Application/>
+        </AppProvider>
+      </UserProvider>
     </BrowserRouter>
   </QueryClientProvider>,
 );
